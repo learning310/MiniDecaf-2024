@@ -26,12 +26,26 @@ class TacUnaryOp(Enum):
 # Kinds of binary operations.
 @unique
 class TacBinaryOp(Enum):
+    # Arithmetic Operators
     ADD = auto()
     SUB = auto()
     MUL = auto()
     DIV = auto()
     MOD = auto()
+    # Comparison Operators
+    EQ = auto()
+    NE = auto()
+    LT = auto()
+    LE = auto()
+    GT = auto()
+    GE = auto()
+    # Logical Operators
+    LAND = auto()
     LOR = auto()
+    # Bitwise Operators
+    AND = auto()
+    OR = auto()
+    XOR = auto()
 
 
 # Kinds of branching with conditions.

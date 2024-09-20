@@ -232,13 +232,26 @@ class TACGen(Visitor[TACFuncEmitter, None]):
         expr.rhs.accept(self, mv)
 
         op = {
+            # Arithmetic Operators
             node.BinaryOp.Add: tacop.TacBinaryOp.ADD,
             node.BinaryOp.Sub: tacop.TacBinaryOp.SUB,
             node.BinaryOp.Mul: tacop.TacBinaryOp.MUL,
             node.BinaryOp.Div: tacop.TacBinaryOp.DIV,
             node.BinaryOp.Mod: tacop.TacBinaryOp.MOD,
+            # Comparison Operators
+            node.BinaryOp.EQ: tacop.TacBinaryOp.EQ,
+            node.BinaryOp.NE: tacop.TacBinaryOp.NE,
+            node.BinaryOp.LT: tacop.TacBinaryOp.LT,
+            node.BinaryOp.LE: tacop.TacBinaryOp.LE,
+            node.BinaryOp.GT: tacop.TacBinaryOp.GT,
+            node.BinaryOp.GE: tacop.TacBinaryOp.GE,
+            # Logical Operators
+            node.BinaryOp.LogicAnd: tacop.TacBinaryOp.LAND,
             node.BinaryOp.LogicOr: tacop.TacBinaryOp.LOR,
-            # You can add binary operations here.
+            # Bitwise Operators
+            node.BinaryOp.BitAnd: tacop.TacBinaryOp.AND,
+            node.BinaryOp.BitOr: tacop.TacBinaryOp.OR,
+            node.BinaryOp.Xor: tacop.TacBinaryOp.XOR,
         }[expr.op]
         expr.setattr(
             "val", mv.visitBinary(op, expr.lhs.getattr("val"), expr.rhs.getattr("val"))

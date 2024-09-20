@@ -22,12 +22,21 @@ class RvUnaryOp(Enum):
 
 @unique
 class RvBinaryOp(Enum):
+    # Arithmetic Operators
     ADD = auto()
     SUB = auto()
     MUL = auto()
     DIV = auto()
     REM = auto()
+    # Comparison Operators
+    SLT = auto()
+    SLE = auto()
+    SGT = auto()
+    SGE = auto()
+    # Bitwise Operators
+    AND = auto()
     OR = auto()
+    XOR = auto()
 
 class Riscv:
 
