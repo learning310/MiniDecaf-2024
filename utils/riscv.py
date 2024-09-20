@@ -23,6 +23,10 @@ class RvUnaryOp(Enum):
 @unique
 class RvBinaryOp(Enum):
     ADD = auto()
+    SUB = auto()
+    MUL = auto()
+    DIV = auto()
+    REM = auto()
     OR = auto()
 
 class Riscv:
