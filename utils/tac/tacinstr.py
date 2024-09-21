@@ -103,14 +103,14 @@ class Binary(TACInstr):
             TacBinaryOp.MUL: "*",
             TacBinaryOp.DIV: "/",
             TacBinaryOp.MOD: "%",
-            TacBinaryOp.EQU: "==",
-            TacBinaryOp.NEQ: "!=",
-            TacBinaryOp.SLT: "<",
-            TacBinaryOp.LEQ: "<=",
-            TacBinaryOp.SGT: ">",
-            TacBinaryOp.GEQ: ">=",
-            TacBinaryOp.AND: "&&",
-            TacBinaryOp.OR: "||",
+            TacBinaryOp.EQ: "==",
+            TacBinaryOp.NE: "!=",
+            TacBinaryOp.LT: "<",
+            TacBinaryOp.LE: "<=",
+            TacBinaryOp.GT: ">",
+            TacBinaryOp.GE: ">=",
+            TacBinaryOp.LAND: "&&",
+            TacBinaryOp.LOR: "||",
         }[self.op]
         return "%s = (%s %s %s)" % (self.dst, self.lhs, opStr, self.rhs)
 
