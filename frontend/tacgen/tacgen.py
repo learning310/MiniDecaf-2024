@@ -171,7 +171,7 @@ class TACGen(Visitor[TACFuncEmitter, None]):
         """
         varSymbol = decl.getattr('symbol')
         varSymbol.temp = mv.freshTemp()
-        if decl.init_expr != NULL:
+        if not decl.init_expr is NULL:
             decl.init_expr.accept(self, mv)
             tempVarInitExpr = decl.init_expr.getattr('val')
             mv.visitAssignment(varSymbol.temp, tempVarInitExpr)
@@ -272,7 +272,22 @@ class TACGen(Visitor[TACFuncEmitter, None]):
         """
         1. Refer to the implementation of visitIf and visitBinary.
         """
-        raise NotImplementedError
+        expr.cond.accept(self, mv)
+        
+        skipLabel = mv.freshLabel()
+        exitLabel = mv.freshLabel()
+        mv.visitCondBranch(
+            tacop.CondBranchOp.BEQ, expr.cond.getattr("val"), skipLabel
+        )
+        tempVar = mv.freshTemp()
+        expr.then.accept(self, mv)
+        mv.visitAssignment(tempVar, expr.then.getattr('val'))
+        mv.visitBranch(exitLabel)
+        mv.visitLabel(skipLabel)
+        expr.otherwise.accept(self, mv)
+        mv.visitAssignment(tempVar, expr.otherwise.getattr('val'))
+        mv.visitLabel(exitLabel)
+        expr.setattr('val', tempVar)
 
     def visitIntLiteral(self, expr: IntLiteral, mv: TACFuncEmitter) -> None:
         expr.setattr("val", mv.visitLoad(expr.value))

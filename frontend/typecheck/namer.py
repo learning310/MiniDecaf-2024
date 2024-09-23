@@ -107,7 +107,7 @@ class Namer(Visitor[ScopeStack, None]):
         else:
             raise DecafDeclConflictError(decl.ident.value)
         decl.setattr('symbol', varSymbol)
-        if decl.init_expr != NULL:
+        if not decl.init_expr is NULL:
             decl.init_expr.accept(self, ctx)
 
     def visitAssignment(self, expr: Assignment, ctx: ScopeStack) -> None:
