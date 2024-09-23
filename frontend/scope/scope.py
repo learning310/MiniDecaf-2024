@@ -21,6 +21,7 @@ class Scope:
     def __init__(self, kind: ScopeKind) -> None:
         self.kind = kind
         self.symbols = {}
+        self.loop_count = 0
 
     # To check if a symbol is declared in the scope.
     def containsKey(self, key: str) -> bool:

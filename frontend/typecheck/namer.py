@@ -56,7 +56,7 @@ class Namer(Visitor[ScopeStack, None]):
         stmt.expr.accept(self, ctx)
 
     """
-    def visitFor(self, stmt: For, ctx: ScopeStack) -> None:
+    def visitFor(self, stmt: For, ctx: Stack) -> None:
 
     1. Open a local scope for stmt.init.
     2. Visit stmt.init, stmt.cond, stmt.update.
@@ -64,6 +64,18 @@ class Namer(Visitor[ScopeStack, None]):
     4. Visit body of the loop.
     5. Close the loop and the local scope.
     """
+    def visitFor(self, stmt: For, ctx: ScopeStack) -> None:
+        ctx.newScope()
+        stmt.init.accept(self, ctx)
+        if not stmt.cond is NULL:
+            stmt.cond.accept(self, ctx)
+        else:
+            stmt.cond = IntLiteral(1)
+        stmt.update.accept(self, ctx)
+        ctx.increaseLoop()
+        stmt.body.accept(self, ctx)
+        ctx.decreaseLoop()
+        ctx.pop()
 
     def visitIf(self, stmt: If, ctx: ScopeStack) -> None:
         stmt.cond.accept(self, ctx)
@@ -74,8 +86,10 @@ class Namer(Visitor[ScopeStack, None]):
             stmt.otherwise.accept(self, ctx)
 
     def visitWhile(self, stmt: While, ctx: ScopeStack) -> None:
+        ctx.increaseLoop()
         stmt.cond.accept(self, ctx)
         stmt.body.accept(self, ctx)
+        ctx.decreaseLoop()
 
     def visitBreak(self, stmt: Break, ctx: ScopeStack) -> None:
         """
@@ -85,13 +99,17 @@ class Namer(Visitor[ScopeStack, None]):
         if not in a loop:
             raise DecafBreakOutsideLoopError()
         """
-        raise NotImplementedError
+        if ctx.top().loop_count == 0:
+            raise DecafBreakOutsideLoopError
 
     """
-    def visitContinue(self, stmt: Continue, ctx: ScopeStack) -> None:
+    def visitContinue(self, stmt: Continue, ctx: Stack) -> None:
     
     1. Refer to the implementation of visitBreak.
     """
+    def visitContinue(self, stmt: Continue, ctx: ScopeStack) -> None:
+        if ctx.top().loop_count == 0:
+            raise DecafContinueOutsideLoopError
 
     def visitDeclaration(self, decl: Declaration, ctx: ScopeStack) -> None:
         """

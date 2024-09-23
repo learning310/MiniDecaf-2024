@@ -26,7 +26,9 @@ class ScopeStack:
 
     # To create a new scope
     def newScope(self) -> None:
+        current_loop_count = self.top().loop_count
         self.push(Scope(ScopeKind.LOCAL))
+        self.top().loop_count = current_loop_count
     
     # To get a symbol in all scopes, from backward 
     def lookup(self, name: str) -> Optional[Symbol]:
@@ -34,3 +36,18 @@ class ScopeStack:
             if scope.containsKey(name):
                 return scope.get(name)
         return None
+    
+    # Increase the loop count of the top scope
+    def increaseLoop(self) -> None:
+        self.top().loop_count += 1
+
+    # Decrease the loop count of the top scope
+    def decreaseLoop(self) -> None:
+        self.top().loop_count -= 1
+
+    # Print the scope stack
+    def printAll(self) -> None:
+        tmp = []
+        for scope in self.stk:
+            tmp.append(scope.loop_count)
+        print(tmp)
