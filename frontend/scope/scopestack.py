@@ -44,10 +44,3 @@ class ScopeStack:
     # Decrease the loop count of the top scope
     def decreaseLoop(self) -> None:
         self.top().loop_count -= 1
-
-    # Print the scope stack
-    def printAll(self) -> None:
-        tmp = []
-        for scope in self.stk:
-            tmp.append(scope.loop_count)
-        print(tmp)

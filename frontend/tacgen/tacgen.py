@@ -241,11 +241,11 @@ class TACGen(Visitor[TACFuncEmitter, None]):
         mv.visitLabel(beginLabel)
         stmt.cond.accept(self, mv)
         mv.visitCondBranch(tacop.CondBranchOp.BEQ, stmt.cond.getattr("val"), breakLabel)
+        
         stmt.body.accept(self, mv)
         mv.visitLabel(loopLabel)
         stmt.update.accept(self, mv)
         mv.visitBranch(beginLabel)
-        
         mv.visitLabel(breakLabel)
         mv.closeLoop()
 
