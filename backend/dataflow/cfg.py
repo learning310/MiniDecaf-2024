@@ -23,10 +23,8 @@ class CFG:
             self.links[u][1].add(v)
             self.links[v][0].add(u)
 
-        """
-        You can start from basic block 0 and do a DFS traversal of the CFG
-        to find all the reachable basic blocks.
-        """
+        self.reachableNodes = set()
+        self.dfs(0)
 
     def getBlock(self, id):
         return self.nodes[id]
@@ -45,3 +43,12 @@ class CFG:
 
     def iterator(self):
         return iter(self.nodes)
+
+    def notReachable(self, node):
+        return node not in self.reachableNodes
+
+    def dfs(self, u):
+        self.reachableNodes.add(self.getBlock(u))
+        for v in self.links[u][1]:
+            if self.getBlock(v) not in self.reachableNodes:
+                self.dfs(v)
