@@ -78,6 +78,7 @@ class RiscvAsmEmitter():
         def visitUnary(self, instr: Unary) -> None:
             op = {
                 TacUnaryOp.NEG: RvUnaryOp.NEG,
+                # You can add unary operations here.
                 TacUnaryOp.NOT: RvUnaryOp.NOT,
                 TacUnaryOp.LNOT: RvUnaryOp.SEQZ,
             }[instr.op]
@@ -112,6 +113,7 @@ class RiscvAsmEmitter():
                 op = {
                     # Arithmetic Operators
                     TacBinaryOp.ADD: RvBinaryOp.ADD,
+                    # You can add binary operations here.
                     TacBinaryOp.SUB: RvBinaryOp.SUB,
                     TacBinaryOp.MUL: RvBinaryOp.MUL,
                     TacBinaryOp.DIV: RvBinaryOp.DIV,

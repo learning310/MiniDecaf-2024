@@ -23,6 +23,10 @@ class CFG:
             self.links[u][1].add(v)
             self.links[v][0].add(u)
 
+        """
+        You can start from basic block 0 and do a DFS traversal of the CFG
+        to find all the reachable basic blocks.
+        """
         self.reachableNodes = set()
         self.dfs(0)
 

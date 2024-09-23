@@ -231,6 +231,7 @@ class TACGen(Visitor[TACFuncEmitter, None]):
 
         op = {
             node.UnaryOp.Neg: tacop.TacUnaryOp.NEG,
+            # You can add unary operations here.
             node.UnaryOp.BitNot: tacop.TacUnaryOp.NOT,
             node.UnaryOp.LogicNot: tacop.TacUnaryOp.LNOT,
         }[expr.op]
@@ -257,6 +258,7 @@ class TACGen(Visitor[TACFuncEmitter, None]):
             # Logical Operators
             node.BinaryOp.LogicAnd: tacop.TacBinaryOp.LAND,
             node.BinaryOp.LogicOr: tacop.TacBinaryOp.LOR,
+            # You can add binary operations here.
             # Bitwise Operators
             node.BinaryOp.BitAnd: tacop.TacBinaryOp.AND,
             node.BinaryOp.BitOr: tacop.TacBinaryOp.OR,
