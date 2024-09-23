@@ -279,14 +279,22 @@ class TACGen(Visitor[TACFuncEmitter, None]):
         mv.visitCondBranch(
             tacop.CondBranchOp.BEQ, expr.cond.getattr("val"), skipLabel
         )
+
+        # Temp variable for the result
         tempVar = mv.freshTemp()
+
+        # The 'then' branch
         expr.then.accept(self, mv)
         mv.visitAssignment(tempVar, expr.then.getattr('val'))
         mv.visitBranch(exitLabel)
+
+        # The 'otherwise' branch
         mv.visitLabel(skipLabel)
         expr.otherwise.accept(self, mv)
         mv.visitAssignment(tempVar, expr.otherwise.getattr('val'))
         mv.visitLabel(exitLabel)
+
+        # Assign the temp variable to the expression
         expr.setattr('val', tempVar)
 
     def visitIntLiteral(self, expr: IntLiteral, mv: TACFuncEmitter) -> None:
