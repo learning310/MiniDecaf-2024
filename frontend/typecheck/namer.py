@@ -67,9 +67,9 @@ class Namer(Visitor[ScopeStack, None]):
         ctx.pop()
 
     def visitBlock(self, block: Block, ctx: ScopeStack) -> None:
-        if ctx.top().is_func_or_for:
+        if ctx.top().is_func:
             print(f'no newScope: {ctx}')
-            ctx.top().is_func_or_for = False
+            ctx.top().is_func = False
             for child in block:
                 child.accept(self, ctx)
         else:
@@ -92,7 +92,7 @@ class Namer(Visitor[ScopeStack, None]):
     5. Close the loop and the local scope.
     """
     def visitFor(self, stmt: For, ctx: ScopeStack) -> None:
-        ctx.newScope(True)
+        ctx.newScope()
         stmt.init.accept(self, ctx)
         if not stmt.cond is NULL:
             stmt.cond.accept(self, ctx)

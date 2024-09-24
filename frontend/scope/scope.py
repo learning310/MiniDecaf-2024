@@ -18,11 +18,11 @@ class ScopeKind(Enum):
 
 
 class Scope:
-    def __init__(self, kind: ScopeKind, is_func_or_for: bool = False) -> None:
+    def __init__(self, kind: ScopeKind, is_func: bool = False) -> None:
         self.kind = kind
         self.symbols = {}
         self.loop_count = 0
-        self.is_func_or_for = is_func_or_for
+        self.is_func = is_func
 
     # To check if a symbol is declared in the scope.
     def containsKey(self, key: str) -> bool:

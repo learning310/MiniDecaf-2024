@@ -31,9 +31,9 @@ class ScopeStack:
         return len(self.stk) == 0
 
     # To create a new scope
-    def newScope(self, is_func_or_for: bool = False) -> None:
+    def newScope(self, is_func: bool = False) -> None:
         current_loop_count = self.top().loop_count
-        self.push(Scope(ScopeKind.LOCAL, is_func_or_for))
+        self.push(Scope(ScopeKind.LOCAL, is_func))
         self.top().loop_count = current_loop_count
     
     # To get a symbol in all scopes, from backward 
