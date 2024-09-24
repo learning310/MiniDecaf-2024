@@ -54,5 +54,5 @@ class ScopeStack:
     def __str__(self) -> str:
         res = []
         for i in range(len(self.stk)):
-            res.append(f"Scope {i}: {self.stk[i].kind}")
+            res.append(f"Scope {i}: {self.stk[i].symbols}")
         return str(res)

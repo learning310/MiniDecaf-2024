@@ -102,6 +102,12 @@ class TACFuncEmitter(TACVisitor):
     def visitReturn(self, value: Optional[Temp]) -> None:
         self.func.add(Return(value))
 
+    def visitParameter(self, temp: Temp) -> None:
+        self.func.add(Parameter(temp))
+
+    def visitCall(self, dst: Temp, name: str) -> None:
+        self.func.add(Call(dst, name))
+
     def visitLabel(self, label: Label) -> None:
         self.func.add(Mark(label))
 
@@ -177,6 +183,15 @@ class TACGen(Visitor[TACFuncEmitter, None]):
     def visitParameterList(self, params: ParameterList, mv: TACFuncEmitter) -> None:
         for param in params:
             param.accept(self, mv)
+    
+    def visitCall(self, call: Call, mv: TACFuncEmitter) -> None:
+        varSymbol = call.getattr('symbol')
+        varSymbol.temp = mv.freshTemp()
+        call.setattr('val', varSymbol.temp)
+        for arg in call.argument_list:
+            arg.accept(self, mv)
+            mv.visitParameter(arg.getattr('val'))
+        mv.visitCall(call.getattr('val'), call.ident.value)
 
     def visitDeclaration(self, decl: Declaration, mv: TACFuncEmitter) -> None:
         """

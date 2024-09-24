@@ -55,26 +55,36 @@ class Namer(Visitor[ScopeStack, None]):
 
     def visitFunction(self, func: Function, ctx: ScopeStack) -> None:
         funcSymbol = FuncSymbol(func.ident.value, func.ret_t.type, GlobalScope)
+        # TODO: Define 和 Declare 的区别是什么？
         for param in func.params:
             funcSymbol.addParaType(param.var_t.type)
-        if GlobalScope.isDefined(funcSymbol):
+        if GlobalScope.containsKey(funcSymbol):
             raise DecafDeclConflictError(func.ident.value)
         GlobalScope.define(funcSymbol)
+        GlobalScope.declare(funcSymbol)
 
         ctx.newScope(True)
         func.params.accept(self, ctx)
         func.body.accept(self, ctx)
         ctx.pop()
+    
+    def visitCall(self, call: Call, ctx: ScopeStack) -> None:
+        funcSymbol = ctx.lookup(call.ident.value)
+        if funcSymbol is None:
+            raise DecafUndefinedFuncError(call.ident.value)
+        if not isinstance(funcSymbol, FuncSymbol):
+            raise DecafDeclConflictError(call.ident.value)
+        call.setattr('symbol', funcSymbol)
+        for arg in call.argument_list:
+            arg.accept(self, ctx)
 
     def visitBlock(self, block: Block, ctx: ScopeStack) -> None:
         if ctx.top().is_func:
-            print(f'no newScope: {ctx}')
             ctx.top().is_func = False
             for child in block:
                 child.accept(self, ctx)
         else:
             ctx.newScope()
-            print(f'newScope: {ctx}')
             for child in block:
                 child.accept(self, ctx)
             ctx.pop()

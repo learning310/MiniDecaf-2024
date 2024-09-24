@@ -189,3 +189,30 @@ class Mark(TACInstr):
 
     def accept(self, v: TACVisitor) -> None:
         v.visitMark(self)
+
+
+# Parameter.
+class Parameter(TACInstr):
+    def __init__(self, temp: Temp) -> None:
+        super().__init__(TacFuncOp.PARAM, [], [temp], None)
+        self.value = temp
+
+    def __str__(self) -> str:
+        return "param %s" % self.value
+
+    def accept(self, v: TACVisitor) -> None:
+        v.visitParameter(self)
+
+
+# Function call.
+class Call(TACInstr):
+    def __init__(self, dst: Temp, name: str) -> None:
+        super().__init__(TacFuncOp.CALL, [dst], [name], None)
+        self.dst = dst
+        self.name = name
+
+    def __str__(self) -> str:
+        return "%s = call %s" % (self.dst, self.name)
+
+    def accept(self, v: TACVisitor) -> None:
+        v.visitCall(self)

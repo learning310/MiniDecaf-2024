@@ -53,3 +53,10 @@ class TacBinaryOp(Enum):
 class CondBranchOp(Enum):
     BEQ = auto()
     BNE = auto()
+
+
+# Kinds of function-related instructions.
+@unique
+class TacFuncOp(Enum):
+    CALL = auto()
+    PARAM = auto()
