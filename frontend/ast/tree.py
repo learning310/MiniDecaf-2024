@@ -75,22 +75,25 @@ class Function(Node):
         self,
         ret_t: TypeLiteral,
         ident: Identifier,
+        params: ParameterList,
         body: Block,
     ) -> None:
         super().__init__("function")
         self.ret_t = ret_t
         self.ident = ident
+        self.params = params
         self.body = body
 
     def __getitem__(self, key: int) -> Node:
         return (
             self.ret_t,
             self.ident,
+            self.params,
             self.body,
         )[key]
 
     def __len__(self) -> int:
-        return 3
+        return 4
 
     def accept(self, v: Visitor[T, U], ctx: T):
         return v.visitFunction(self, ctx)
@@ -467,3 +470,70 @@ class TInt(TypeLiteral):
 
     def accept(self, v: Visitor[T, U], ctx: T):
         return v.visitTInt(self, ctx)
+
+
+class ParameterList(ListNode["Parameter"]):
+    """
+    AST node of parameter list.
+    """
+
+    def __init__(self, *children: Parameter) -> None:
+        super().__init__("parameter_list", list(children))
+
+    def accept(self, v: Visitor[T, U], ctx: T):
+        return v.visitParameterList(self, ctx)
+
+
+class Parameter(Node):
+    """
+    AST node of parameter.
+    """
+
+    def __init__(self, var_t: TypeLiteral, ident: Identifier) -> None:
+        super().__init__("parameter")
+        self.var_t = var_t
+        self.ident = ident
+
+    def __getitem__(self, key: int) -> Node:
+        return (self.var_t, self.ident)[key]
+
+    def __len__(self) -> int:
+        return 2
+
+    def accept(self, v: Visitor[T, U], ctx: T):
+        return v.visitParameter(self, ctx)
+
+
+class ExpressionList(ListNode["Expression"]):
+    """
+    AST node of expression list.
+    """
+
+    def __init__(self, *children: Expression) -> None:
+        super().__init__("expression_list", list(children))
+
+    def accept(self, v: Visitor[T, U], ctx: T):
+        return v.visitExpressionList(self, ctx)
+
+
+class Call(Expression):
+    """
+    AST node of function call.
+    """
+
+    def __init__(self, ident: Identifier, argument_list: ExpressionList) -> None:
+        super().__init__("call")
+        self.ident = ident
+        self.argument_list = argument_list
+
+    def __getitem__(self, key: int) -> Node:
+        return (self.ident, self.argument_list)[key]
+
+    def __len__(self) -> int:
+        return 2
+
+    def accept(self, v: Visitor[T, U], ctx: T):
+        return v.visitCall(self, ctx)
+
+    def __str__(self) -> str:
+        return f"call({self.ident})"

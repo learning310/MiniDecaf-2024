@@ -51,6 +51,12 @@ class Visitor(Protocol[T, U]):  # type: ignore
 
     def visitContinue(self, that: Continue, ctx: T) -> Optional[U]:
         return self.visitOther(that, ctx)
+    
+    def visitParameter(self, that: Parameter, ctx: T) -> Optional[U]:
+        return self.visitOther(that, ctx)
+
+    def visitParameterList(self, that: ParameterList, ctx: T) -> Optional[Sequence[Optional[U]]]:
+        return self.visitOther(that, ctx)
 
     def visitDeclaration(self, that: Declaration, ctx: T) -> Optional[U]:
         return self.visitOther(that, ctx)

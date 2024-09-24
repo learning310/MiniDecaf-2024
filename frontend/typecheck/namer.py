@@ -28,7 +28,7 @@ class Namer(Visitor[ScopeStack, None]):
     def transform(self, program: Program) -> Program:
         # Global scope. You don't have to consider it until Step 6.
         program.globalScope = GlobalScope
-        ctx = ScopeStack(Scope(program.globalScope))
+        ctx = ScopeStack(program.globalScope)
 
         program.accept(self, ctx)
         return program
@@ -41,16 +41,43 @@ class Namer(Visitor[ScopeStack, None]):
         for func in program.functions().values():
             func.accept(self, ctx)
 
+    def visitParameter(self, param: Parameter, ctx: ScopeStack) -> None:
+        varSymbol = VarSymbol(param.ident.value, param.var_t.type)
+        if ctx.top().lookup(param.ident.value) is None:
+            ctx.top().declare(varSymbol)
+        else:
+            raise DecafDeclConflictError(param.ident.value)
+        param.setattr('symbol', varSymbol)
+        
+    def visitParameterList(self, params: ParameterList, ctx: ScopeStack) -> None:
+        for param in params:
+            param.accept(self, ctx)
+
     def visitFunction(self, func: Function, ctx: ScopeStack) -> None:
-        ctx.newScope()
+        funcSymbol = FuncSymbol(func.ident.value, func.ret_t.type, GlobalScope)
+        for param in func.params:
+            funcSymbol.addParaType(param.var_t.type)
+        if GlobalScope.isDefined(funcSymbol):
+            raise DecafDeclConflictError(func.ident.value)
+        GlobalScope.define(funcSymbol)
+
+        ctx.newScope(True)
+        func.params.accept(self, ctx)
         func.body.accept(self, ctx)
         ctx.pop()
 
     def visitBlock(self, block: Block, ctx: ScopeStack) -> None:
-        ctx.newScope()
-        for child in block:
-            child.accept(self, ctx)
-        ctx.pop()
+        if ctx.top().is_func_or_for:
+            print(f'no newScope: {ctx}')
+            ctx.top().is_func_or_for = False
+            for child in block:
+                child.accept(self, ctx)
+        else:
+            ctx.newScope()
+            print(f'newScope: {ctx}')
+            for child in block:
+                child.accept(self, ctx)
+            ctx.pop()
 
     def visitReturn(self, stmt: Return, ctx: ScopeStack) -> None:
         stmt.expr.accept(self, ctx)
@@ -65,7 +92,7 @@ class Namer(Visitor[ScopeStack, None]):
     5. Close the loop and the local scope.
     """
     def visitFor(self, stmt: For, ctx: ScopeStack) -> None:
-        ctx.newScope()
+        ctx.newScope(True)
         stmt.init.accept(self, ctx)
         if not stmt.cond is NULL:
             stmt.cond.accept(self, ctx)

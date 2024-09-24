@@ -42,8 +42,65 @@ def p_empty(p: yacc.YaccProduction):
 def p_program(p):
     """
     program : function
+        | program function
     """
-    p[0] = Program(p[1])
+    if len(p) == 2:
+        p[0] = Program(p[1])
+    else:
+        p[1].children.append(p[2])
+        p[0] = p[1]
+
+
+def p_function_def(p):
+    """
+    function : type Identifier LParen parameter_list RParen LBrace block RBrace
+    """
+    p[0] = Function(p[1], p[2], p[4], p[7])
+
+
+def p_parameter_list(p):
+    """
+    parameter_list : parameter
+        | parameter_list Comma parameter
+    """
+    if len(p) == 2:
+        p[0] = ParameterList(p[1])
+    else:
+        p[1].children.append(p[3])
+        p[0] = p[1]
+
+
+def p_parameter_list_empty(p):
+    """
+    parameter_list : empty
+    """
+    p[0] = ParameterList()
+
+
+def p_parameter(p):
+    """
+    parameter : type Identifier
+    """
+    p[0] = Parameter(p[1], p[2])
+
+
+def p_expression_list(p):
+    """
+    expression_list : opt_expression
+        | expression_list Comma opt_expression
+    """
+    if len(p) == 2:
+        p[0] = ExpressionList(p[1])
+    else:
+        p[1].children.append(p[3])
+        p[0] = p[1]
+
+
+def p_expression_list_empty(p):
+    """
+    expression_list : empty
+    """
+    p[0] = ExpressionList()
 
 
 def p_type(p):
@@ -51,13 +108,6 @@ def p_type(p):
     type : Int
     """
     p[0] = TInt()
-
-
-def p_function_def(p):
-    """
-    function : type Identifier LParen RParen LBrace block RBrace
-    """
-    p[0] = Function(p[1], p[2], p[6])
 
 
 def p_block(p):
@@ -213,6 +263,16 @@ def p_unary_expression(p):
         | Not unary
     """
     unary(p)
+
+
+def p_function_call(p):
+    """
+    postfix : Identifier LParen expression_list RParen
+    """
+    if len(p) == 2:
+        p[0] = p[1]
+    else:
+        p[0] = Call(p[1], p[3])
 
 
 def p_binary_expression(p):

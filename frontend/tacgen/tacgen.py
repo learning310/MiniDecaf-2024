@@ -1,3 +1,4 @@
+from ..ast.tree import Parameter
 from ..ast.tree import Continue
 from frontend.ast.node import Optional
 from frontend.ast.tree import Function, Optional
@@ -142,7 +143,8 @@ class TACGen(Visitor[TACFuncEmitter, None]):
         tacFuncs = []
         for funcName, astFunc in program.functions().items():
             # in step9, you need to use real parameter count
-            emitter = TACFuncEmitter(FuncLabel(funcName), 0, labelManager)
+            emitter = TACFuncEmitter(FuncLabel(funcName), len(astFunc.params), labelManager)
+            astFunc.params.accept(self, emitter)
             astFunc.body.accept(self, emitter)
             tacFuncs.append(emitter.visitEnd())
         return TACProg(tacFuncs)
@@ -166,6 +168,15 @@ class TACGen(Visitor[TACFuncEmitter, None]):
         1. Set the 'val' attribute of ident as the temp variable of the 'symbol' attribute of ident.
         """
         ident.setattr('val', ident.getattr('symbol').temp)
+
+    def visitParameter(self, param: Parameter, mv: TACFuncEmitter) -> None:
+        varSymbol = param.getattr('symbol')
+        varSymbol.temp = mv.freshTemp()
+        param.setattr('val', varSymbol.temp)
+
+    def visitParameterList(self, params: ParameterList, mv: TACFuncEmitter) -> None:
+        for param in params:
+            param.accept(self, mv)
 
     def visitDeclaration(self, decl: Declaration, mv: TACFuncEmitter) -> None:
         """

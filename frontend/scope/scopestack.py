@@ -18,6 +18,12 @@ class ScopeStack:
     def top(self) -> Scope:
         return self.stk[-1]
     
+    def top2(self) -> Scope:
+        return self.stk[-2]
+    
+    def bottom(self) -> Scope:
+        return self.stk[0]
+    
     def size(self) -> int:
         return len(self.stk)
     
@@ -25,9 +31,9 @@ class ScopeStack:
         return len(self.stk) == 0
 
     # To create a new scope
-    def newScope(self) -> None:
+    def newScope(self, is_func_or_for: bool = False) -> None:
         current_loop_count = self.top().loop_count
-        self.push(Scope(ScopeKind.LOCAL))
+        self.push(Scope(ScopeKind.LOCAL, is_func_or_for))
         self.top().loop_count = current_loop_count
     
     # To get a symbol in all scopes, from backward 
@@ -44,3 +50,9 @@ class ScopeStack:
     # Decrease the loop count of the top scope
     def decreaseLoop(self) -> None:
         self.top().loop_count -= 1
+
+    def __str__(self) -> str:
+        res = []
+        for i in range(len(self.stk)):
+            res.append(f"Scope {i}: {self.stk[i].kind}")
+        return str(res)
