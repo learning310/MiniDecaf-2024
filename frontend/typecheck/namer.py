@@ -172,6 +172,11 @@ class Namer(Visitor[ScopeStack, None]):
         if isinstance(expr.lhs, Identifier):
             expr.lhs.accept(self, ctx)
             expr.rhs.accept(self, ctx)
+            if not isinstance(expr.lhs.getattr('symbol'), VarSymbol):
+                raise DecafBadAssignTypeError
+            if (expr.lhs.getattr('symbol').__class__ != expr.rhs.getattr('symbol').__class__ 
+                or expr.lhs.getattr('symbol').type != expr.rhs.getattr('symbol').type):
+                    raise DecafTypeMismatchError
         else:
             raise DecafBadAssignTypeError
 

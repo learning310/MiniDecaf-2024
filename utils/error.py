@@ -104,7 +104,7 @@ class DecafBadFuncCallError(Exception):
 
 class DecafBadAssignTypeError(Exception):
     def __init__(self) -> None:
-        super().__init__("Semantic error: cannot assign to an array")
+        super().__init__("Semantic error: cannot assign to a non-lvalue")
 
 
 class IllegalArgumentException(Exception):
