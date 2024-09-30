@@ -11,18 +11,19 @@ Asm: we use it to generate all the asm code for the program
 """
 
 class Asm:
-    def __init__(self, emitter: RiscvAsmEmitter, reg_alloc: BruteRegAlloc) -> None:
-        self.emitter = emitter
-        self.reg_alloc = reg_alloc
+    def __init__(self) -> None:
+        pass
 
     def transform(self, prog: TACProg):
         analyzer = LivenessAnalyzer()
+        emitter = RiscvAsmEmitter(Riscv.AllocatableRegs, Riscv.CallerSaved)
+        reg_alloc = BruteRegAlloc(emitter)
         
         for func in prog.funcs:
-            pair = self.emitter.selectInstr(func)
+            pair = emitter.selectInstr(func)
             builder = CFGBuilder()
             cfg: CFG = builder.buildFrom(pair[0])
             analyzer.accept(cfg)
-            self.reg_alloc.accept(cfg, pair[1])
+            reg_alloc.accept(cfg, pair[1])
 
-        return self.emitter.emitEnd()
+        return emitter.emitEnd()
