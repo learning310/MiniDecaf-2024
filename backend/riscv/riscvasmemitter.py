@@ -68,6 +68,12 @@ class RiscvAsmEmitter():
             else:
                 self.seq.append(Riscv.LoadImm(Riscv.A0, 0))
             self.seq.append(Riscv.JumpToEpilogue(self.entry))
+        
+        def visitDeclParams(self, instr: DeclParams) -> None:
+            self.seq.append(Riscv.DeclParams(instr.params))
+        
+        def visitCall(self, instr: Call) -> None:
+            self.seq.append(Riscv.Call(instr.label, instr.ret, instr.params))
 
         def visitMark(self, instr: Mark) -> None:
             self.seq.append(Riscv.RiscvLabel(instr.label))
@@ -145,8 +151,8 @@ class RiscvSubroutineEmitter():
         self.info = info
         self.printer = emitter.printer
         
-        # + 4 is for the RA reg 
-        self.nextLocalOffset = 4 * len(Riscv.CalleeSaved) + 4
+        # + 8 is for the RA reg and the FP reg
+        self.nextLocalOffset = 4 * len(Riscv.CalleeSaved) + 8
         
         # the buf which stored all the NativeInstrs in this function
         self.buf: list[BackendInstr] = []
@@ -158,10 +164,12 @@ class RiscvSubroutineEmitter():
         self.printer.printLabel(info.funcLabel)
 
         # in step9, step11 you can compute the offset of local array and parameters here
+        self.nextParamOffset = 0
+        self.param_buf = []
 
     def emitComment(self, comment: str) -> None:
         # you can add some log here to help you debug
-        pass
+        print(f'# COMMENT: [{comment}]')
     
     # store some temp to stack
     # usually happen when reaching the end of a basicblock
@@ -196,6 +204,11 @@ class RiscvSubroutineEmitter():
     
     def emitFunc(self):
         self.printer.printComment("start of prologue")
+        # save FP reg
+        self.printer.printInstr(Riscv.NativeStoreWord(Riscv.FP, Riscv.SP, 4 * len(Riscv.CalleeSaved) + 4 - self.nextLocalOffset))
+        # set FP reg
+        self.printer.printInstr(Riscv.Move(Riscv.FP, Riscv.SP))
+
         self.printer.printInstr(Riscv.SPAdd(-self.nextLocalOffset))
 
         # in step9, you need to think about how to store RA here
@@ -205,6 +218,7 @@ class RiscvSubroutineEmitter():
                 self.printer.printInstr(
                     Riscv.NativeStoreWord(Riscv.CalleeSaved[i], Riscv.SP, 4 * i)
                 )
+        self.printer.printInstr(Riscv.NativeStoreWord(Riscv.RA, Riscv.SP, 4 * len(Riscv.CalleeSaved)))
 
         self.printer.printComment("end of prologue")
         self.printer.println("")
@@ -231,6 +245,10 @@ class RiscvSubroutineEmitter():
                 self.printer.printInstr(
                     Riscv.NativeLoadWord(Riscv.CalleeSaved[i], Riscv.SP, 4 * i)
                 )
+        
+        # resume FP and RA reg
+        self.printer.printInstr(Riscv.NativeLoadWord(Riscv.FP, Riscv.SP, 4 * len(Riscv.CalleeSaved) + 4))
+        self.printer.printInstr(Riscv.NativeLoadWord(Riscv.RA, Riscv.SP, 4 * len(Riscv.CalleeSaved)))
 
         self.printer.printInstr(Riscv.SPAdd(self.nextLocalOffset))
         self.printer.printComment("end of epilogue")

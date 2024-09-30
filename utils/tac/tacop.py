@@ -59,4 +59,4 @@ class CondBranchOp(Enum):
 @unique
 class TacFuncOp(Enum):
     CALL = auto()
-    PARAM = auto()
+    DECL_PARAMS = auto()

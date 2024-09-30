@@ -205,3 +205,21 @@ class Riscv:
 
         def __str__(self) -> str:
             return "ret"
+
+    class DeclParams(BackendInstr):
+        def __init__(self, params: list[Temp]) -> None:
+            super().__init__(InstrKind.SEQ, [], params, None)
+            self.params = params
+
+        def __str__(self) -> str:
+            return ""
+    
+    class Call(BackendInstr):
+        def __init__(self, func: FuncLabel, ret: Temp, params: list[Temp]) -> None:
+            super().__init__(InstrKind.SEQ, [ret], params, func)
+            self.label = func
+            self.ret = ret
+            self.params = params
+
+        def __str__(self) -> str:
+            return "call " + str(self.label.name)

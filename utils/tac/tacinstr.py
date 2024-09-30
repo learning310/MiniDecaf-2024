@@ -2,6 +2,7 @@ from enum import Enum, auto, unique
 from typing import Any, Optional, Union
 
 from utils.label.label import Label
+from utils.label.funclabel import FuncLabel
 from utils.tac.reg import Reg
 
 from .tacop import *
@@ -191,28 +192,29 @@ class Mark(TACInstr):
         v.visitMark(self)
 
 
-# Parameter.
-class Parameter(TACInstr):
-    def __init__(self, temp: Temp) -> None:
-        super().__init__(TacFuncOp.PARAM, [], [temp], None)
-        self.value = temp
+# Declare parameters.
+class DeclParams(TACInstr):
+    def __init__(self, params: list[Temp]) -> None:
+        super().__init__(TacFuncOp.DECL_PARAMS, [], params, None)
+        self.params = params
 
     def __str__(self) -> str:
-        return "param %s" % self.value
+        return "param %s" % len(self.params)
 
     def accept(self, v: TACVisitor) -> None:
-        v.visitParameter(self)
+        v.visitDeclParams(self)
 
 
 # Function call.
 class Call(TACInstr):
-    def __init__(self, dst: Temp, name: str) -> None:
-        super().__init__(TacFuncOp.CALL, [dst], [name], None)
-        self.dst = dst
-        self.name = name
+    def __init__(self, func: FuncLabel, ret: Temp, params: list[Temp]) -> None:
+        super().__init__(TacFuncOp.CALL, [ret], params, func)
+        self.label = func
+        self.ret = ret
+        self.params = params
 
     def __str__(self) -> str:
-        return "%s = call %s" % (self.dst, self.name)
+        return "%s = call %s(%s)" % (self.ret, self.label, ", ".join(map(str, self.params)))
 
     def accept(self, v: TACVisitor) -> None:
         v.visitCall(self)

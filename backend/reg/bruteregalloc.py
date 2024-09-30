@@ -36,6 +36,7 @@ class BruteRegAlloc(RegAlloc):
 
     def accept(self, graph: CFG, info: SubroutineInfo) -> None:
         subEmitter = RiscvSubroutineEmitter(self.emitter, info)
+        subEmitter.emitComment(f'SubRoutine: {info.funcLabel}')
         for bb in graph.iterator():
             # you need to think more here
             # maybe we don't need to alloc regs for all the basic blocks
@@ -57,15 +58,84 @@ class BruteRegAlloc(RegAlloc):
             self.bindings[temp.index].occupied = False
             self.bindings.pop(temp.index)
 
+    def free(self, reg: Reg, subEmitter: RiscvSubroutineEmitter):
+        subEmitter.emitStoreToStack(reg)
+        subEmitter.emitComment("  free {} ({})".format(str(reg), str(reg.temp)))
+        self.unbind(reg.temp)
+
     def localAlloc(self, bb: BasicBlock, subEmitter: RiscvSubroutineEmitter):
         for reg in self.emitter.allocatableRegs:
             reg.occupied = False
 
         # in step9, you may need to think about how to store callersave regs here
         for loc in bb.allSeq():
-            subEmitter.emitComment(str(loc.instr))
+            subEmitter.emitComment(f'instr: {str(loc.instr)}')
+            if isinstance(loc.instr, Riscv.DeclParams):
+                # If the instruction is a parameter declaration
+                params = loc.instr.params
+                for i, param in enumerate(params):
+                    if i < 8:
+                        # Bind the first 8 parameters to a0-a7
+                        self.bind(param, Riscv.ArgRegs[i])
+                    else:
+                        # Bind the position of other parameters to the stack
+                        subEmitter.offsets[param] = subEmitter.nextLocalOffset + 4 * (i - 8)
+            elif isinstance(loc.instr, Riscv.Call):
+                # If the instruction is a function call
 
-            self.allocForLoc(loc, subEmitter)
+                # Load the first 8 parameters into a0-a7
+                params = loc.instr.params
+                for i in range(len(params)):
+                    if i < 8:
+                        dst = Riscv.ArgRegs[i]
+                        if dst.occupied:
+                            self.free(dst, subEmitter)
+                        src = params[i]
+                        if src.index in self.bindings:
+                            src = self.bindings[src.index]
+                        if isinstance(src, Reg):
+                            subEmitter.emitAsm(Riscv.Move(dst, src))
+                        else:
+                            subEmitter.emitLoadFromStack(dst, src)
+                    else:
+                        subEmitter.param_buf.append(Riscv.NativeStoreWord(params[i], Riscv.SP, subEmitter.nextParamOffset))
+                        subEmitter.nextParamOffset += 4         
+
+                # Save callersave regs to the stack
+                for reg in Riscv.CallerSaved:
+                    if reg.occupied:
+                        subEmitter.emitStoreToStack(reg)
+                
+                # Call the function
+                if subEmitter.nextParamOffset > 0:
+                    subEmitter.buf.append(Riscv.SPAdd(-subEmitter.nextParamOffset))
+                    subEmitter.buf.extend(subEmitter.param_buf)
+                    subEmitter.param_buf = []
+                subEmitter.emitAsm(loc.instr)
+                if subEmitter.nextParamOffset > 0:
+                    subEmitter.buf.append(Riscv.SPAdd(subEmitter.nextParamOffset))
+                    subEmitter.nextParamOffset = 0
+                
+                # Store the return value
+                dst = loc.instr.dsts[0]
+                if dst.index in self.bindings:
+                    dst = self.bindings[dst.index]
+                
+                if isinstance(dst, Reg):
+                    subEmitter.emitAsm(Riscv.Move(dst, Riscv.A0))
+                elif Riscv.A0.occupied:
+                    dst = self.allocRegFor(dst, False, loc.liveIn, subEmitter)
+                    subEmitter.emitAsm(Riscv.Move(dst, Riscv.A0))
+
+                # Restore callersave regs from the stack
+                for reg in Riscv.CallerSaved:
+                    if reg.occupied:
+                        subEmitter.emitLoadFromStack(reg, reg.temp)
+
+                if not Riscv.A0.occupied:
+                    self.bind(loc.instr.dsts[0], Riscv.A0)
+            else:
+                self.allocForLoc(loc, subEmitter)
 
         for tempindex in bb.liveOut:
             if tempindex in self.bindings:
@@ -120,9 +190,7 @@ class BruteRegAlloc(RegAlloc):
         reg = self.emitter.allocatableRegs[
             random.randint(0, len(self.emitter.allocatableRegs) - 1)
         ]
-        subEmitter.emitStoreToStack(reg)
-        subEmitter.emitComment("  spill {} ({})".format(str(reg), str(reg.temp)))
-        self.unbind(reg.temp)
+        self.free(reg, subEmitter)
         self.bind(temp, reg)
         subEmitter.emitComment(
             "  allocate {} to {} (read: {})".format(str(temp), str(reg), str(isRead))

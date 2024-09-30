@@ -34,6 +34,11 @@ class DecafDeclConflictError(Exception):
         super().__init__("Semantic error: declaration conflict '%s'" % name)
 
 
+class DecafRedefinedFunctionError(Exception):
+    def __init__(self, name: str) -> None:
+        super().__init__("Semantic error: redefined function '%s'" % name)
+
+
 class DecafBadIntValueError(Exception):
     def __init__(self, val: Union[str, int]) -> None:
         super().__init__("Semantic error: bad integer value " + str(val))
@@ -48,6 +53,13 @@ class DecafUndefinedFuncError(Exception):
     def __init__(self, name: str) -> None:
         super().__init__("Semantic error: undefined function '%s'" % name)
 
+
+class DecafBadArgCountError(Exception):
+    def __init__(self, name: str, expected: int, got: int) -> None:
+        super().__init__(
+            "Semantic error: bad argument count for function '%s', expected %d, got %d"
+            % (name, expected, got)
+        )
 
 class DecafBreakOutsideLoopError(Exception):
     def __init__(self) -> None:

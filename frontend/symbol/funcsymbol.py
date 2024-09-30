@@ -13,7 +13,7 @@ class FuncSymbol(Symbol):
     def __init__(self, name: str, type: DecafType, scope: Scope) -> None:
         super().__init__(name, type)
         self.scope = scope
-        self.para_type = []
+        self.para_types = []
 
     def __str__(self) -> str:
         return "function %s : %s" % (self.name, str(self.type))
@@ -24,13 +24,13 @@ class FuncSymbol(Symbol):
 
     # To add the type of a parameter. In fact, parameters can only be 'int' in MiniDecaf.
     def addParaType(self, type: DecafType) -> None:
-        self.para_type.append(type)
+        self.para_types.append(type)
 
     # To get the parameter number of a function symbol.
     @property
     def parameterNum(self) -> int:
-        return len(self.para_type)
+        return len(self.para_types)
 
     # To get the parameters' type.
     def getParaType(self, id: int) -> DecafType:
-        return self.para_type[id]
+        return self.para_types[id]

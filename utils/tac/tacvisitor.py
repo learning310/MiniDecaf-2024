@@ -28,7 +28,7 @@ class TACVisitor:
     def visitReturn(self, instr: Return) -> None:
         self.visitOther(instr)
 
-    def visitParameter(self, instr: Parameter) -> None:
+    def visitDeclParams(self, instr: DeclParams) -> None:
         self.visitOther(instr)
     
     def visitCall(self, instr: Call) -> None:

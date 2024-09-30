@@ -37,6 +37,10 @@ class Namer(Visitor[ScopeStack, None]):
         # Check if the 'main' function is missing
         if not program.hasMainFunc():
             raise DecafNoMainFuncError
+        
+        redefinedFunc = program.getRedifinedFunc()
+        if not redefinedFunc is None:
+            raise DecafRedefinedFunctionError(redefinedFunc)
 
         for func in program.functions().values():
             func.accept(self, ctx)
@@ -55,6 +59,7 @@ class Namer(Visitor[ScopeStack, None]):
 
     def visitFunction(self, func: Function, ctx: ScopeStack) -> None:
         funcSymbol = FuncSymbol(func.ident.value, func.ret_t.type, GlobalScope)
+        print(f'# COMMENT: [def {funcSymbol}]')
         # TODO: Define 和 Declare 的区别是什么？
         for param in func.params:
             funcSymbol.addParaType(param.var_t.type)
@@ -70,11 +75,16 @@ class Namer(Visitor[ScopeStack, None]):
     
     def visitCall(self, call: Call, ctx: ScopeStack) -> None:
         funcSymbol = ctx.lookup(call.ident.value)
+        print(f'# COMMENT: [call {funcSymbol}]')
         if funcSymbol is None:
             raise DecafUndefinedFuncError(call.ident.value)
         if not isinstance(funcSymbol, FuncSymbol):
             raise DecafDeclConflictError(call.ident.value)
         call.setattr('symbol', funcSymbol)
+
+        if funcSymbol.parameterNum != len(call.argument_list):
+            raise DecafBadArgCountError(funcSymbol.name, funcSymbol.parameterNum, len(call.argument_list))
+
         for arg in call.argument_list:
             arg.accept(self, ctx)
 
@@ -174,9 +184,6 @@ class Namer(Visitor[ScopeStack, None]):
             expr.rhs.accept(self, ctx)
             if not isinstance(expr.lhs.getattr('symbol'), VarSymbol):
                 raise DecafBadAssignTypeError
-            if (expr.lhs.getattr('symbol').__class__ != expr.rhs.getattr('symbol').__class__ 
-                or expr.lhs.getattr('symbol').type != expr.rhs.getattr('symbol').type):
-                    raise DecafTypeMismatchError
         else:
             raise DecafBadAssignTypeError
 

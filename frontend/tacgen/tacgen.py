@@ -1,7 +1,5 @@
-from ..ast.tree import Parameter
-from ..ast.tree import Continue
 from frontend.ast.node import Optional
-from frontend.ast.tree import Function, Optional
+from frontend.ast.tree import Function, Optional, ExpressionList
 from frontend.ast import node
 from frontend.ast.tree import *
 from frontend.ast.visitor import Visitor
@@ -51,6 +49,8 @@ class TACFuncEmitter(TACVisitor):
 
         self.continueLabelStack = []
         self.breakLabelStack = []
+
+        self.func.add(DeclParams([Temp(i) for i in range(numArgs)]))
 
     # To get a fresh new temporary variable.
     def freshTemp(self) -> Temp:
@@ -103,10 +103,12 @@ class TACFuncEmitter(TACVisitor):
         self.func.add(Return(value))
 
     def visitParameter(self, temp: Temp) -> None:
-        self.func.add(Parameter(temp))
+        self.func.add(DeclParams(temp))
 
-    def visitCall(self, dst: Temp, name: str) -> None:
-        self.func.add(Call(dst, name))
+    def visitCall(self, func: FuncLabel, params: list[Temp]) -> Temp:
+        temp = self.freshTemp()
+        self.func.add(Call(func, temp, params))
+        return temp
 
     def visitLabel(self, label: Label) -> None:
         self.func.add(Mark(label))
@@ -183,15 +185,16 @@ class TACGen(Visitor[TACFuncEmitter, None]):
     def visitParameterList(self, params: ParameterList, mv: TACFuncEmitter) -> None:
         for param in params:
             param.accept(self, mv)
-    
+
     def visitCall(self, call: Call, mv: TACFuncEmitter) -> None:
         varSymbol = call.getattr('symbol')
         varSymbol.temp = mv.freshTemp()
         call.setattr('val', varSymbol.temp)
         for arg in call.argument_list:
             arg.accept(self, mv)
-            mv.visitParameter(arg.getattr('val'))
-        mv.visitCall(call.getattr('val'), call.ident.value)
+        call.setattr('val', mv.visitCall(
+            FuncLabel(call.ident.value), [arg.getattr('val') for arg in call.argument_list]
+        ))
 
     def visitDeclaration(self, decl: Declaration, mv: TACFuncEmitter) -> None:
         """

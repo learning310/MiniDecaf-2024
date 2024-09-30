@@ -10,6 +10,7 @@ from typing import Any, Generic, Optional, TypeVar, Union
 
 from frontend.type import INT, DecafType
 from utils import T, U
+from utils.error import *
 
 from .node import NULL, BinaryOp, Node, UnaryOp
 from .visitor import Visitor, accept
@@ -54,7 +55,16 @@ class Program(ListNode["Function"]):
         super().__init__("program", list(children))
 
     def functions(self) -> dict[str, Function]:
-        return {func.ident.value: func for func in self if isinstance(func, Function)}
+        return {func.ident.value: func for func in self if isinstance(func, Function)}\
+    
+    def getRedifinedFunc(self) -> bool:
+        func_names = set()
+        for func in self:
+            if isinstance(func, Function):
+                if func.ident.value in func_names:
+                    return func.ident.value
+                func_names.add(func.ident.value)
+        return None
 
     def hasMainFunc(self) -> bool:
         return "main" in self.functions()
