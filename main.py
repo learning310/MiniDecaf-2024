@@ -11,7 +11,6 @@ from frontend.tacgen.tacgen import TACGen
 from frontend.typecheck.namer import Namer
 from frontend.typecheck.typer import Typer
 from utils.printtree import TreePrinter
-from utils.riscv import Riscv
 from utils.tac.tacprog import TACProg
 
 
