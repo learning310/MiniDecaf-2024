@@ -58,9 +58,9 @@ class BruteRegAlloc(RegAlloc):
             self.bindings[temp.index].occupied = False
             self.bindings.pop(temp.index)
 
-    def free(self, reg: Reg, subEmitter: RiscvSubroutineEmitter):
+    def spill(self, reg: Reg, subEmitter: RiscvSubroutineEmitter):
         subEmitter.emitStoreToStack(reg)
-        subEmitter.emitComment("  free {} ({})".format(str(reg), str(reg.temp)))
+        subEmitter.emitComment("  spill {} ({})".format(str(reg), str(reg.temp)))
         self.unbind(reg.temp)
 
     def localAlloc(self, bb: BasicBlock, subEmitter: RiscvSubroutineEmitter):
@@ -89,7 +89,7 @@ class BruteRegAlloc(RegAlloc):
                     if i < 8:
                         dst = Riscv.ArgRegs[i]
                         if dst.occupied:
-                            self.free(dst, subEmitter)
+                            self.spill(dst, subEmitter)
                         src = params[i]
                         if src.index in self.bindings:
                             src = self.bindings[src.index]
@@ -190,7 +190,7 @@ class BruteRegAlloc(RegAlloc):
         reg = self.emitter.allocatableRegs[
             random.randint(0, len(self.emitter.allocatableRegs) - 1)
         ]
-        self.free(reg, subEmitter)
+        self.spill(reg, subEmitter)
         self.bind(temp, reg)
         subEmitter.emitComment(
             "  allocate {} to {} (read: {})".format(str(temp), str(reg), str(isRead))
