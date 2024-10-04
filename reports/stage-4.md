@@ -4,19 +4,28 @@
 
 ## 实验内容
 
-为了完成这次实验，我进行了以下工作：
+### Step 7
 
-- 在 `frontend/ast/tree.py` 中添加了 `For` 和 `Continue` 两个类，同时在 `frontend/ast/visitor.py` 中补充了对应的 `Visitor` 成员函数。
-- 在 `frontend/lexer/lex.py` 和 `frontend/parser/ply_parser.py` 中添加了 `for` 循环和 `break` 的 token 定义和语法规则，使得它们能够被正确识别。
-- 修改了 `frontend/scope/scope.py` 和 `frontend/scope/scopestack.py`，为每个 `scope` 添加了 `loop_count` 成员变量，用于记录当前作用域位于多少个循环里。
-- 修改了 `frontend/tacgen/tacgen.py`：
-  - 补全了 `visitFor` 函数，实现了 `for` 循环的中间代码生成，包括 `init`、`cond`、`body` 和 `update` 四个部分。
-  - 补全了 `visitCondExpr` 函数，完成了从三目运算符到中间代码的转换。和 `if`-`else` 语句不同的一点是，三目运算符是有返回值的，所以需要新建一个临时变量用于存 `then` 或 `otherwise` 之一的返回值。
-  - 重载了 `visitContinue` 函数，保证 `continue` 语句的跳转是正常的。先开始我没重载这个函数，发现 `continue` 语句的有无，对于最后的三地址码结果没有影响（直接忽视了 `continue` 语句的存在）。后来发现需要重载这个函数，加上就通过所有测试了。
-- 修改了 `frontend/typecheck/namer.py`：
-  - 补全了 `Namer.visitCondExpr` 函数，按照和 `if` 一样的顺序，分别访问 `cond`、`then` 和 `otherwise`。
-  - 补全了 `Namer.visitFor` 函数。我专门特判了 `stmt.cond` 为空的情况，此时按照实验指导书上写的，应该直接将空的 `cond` 看做非零数字常量，所以我将其赋值为了 `IntLiteral(1)`。
-  - 修改了 `visitWhile` 和 `Namer.visitBreak` 函数，补全了 `Namer.visitContinue` 函数，保证在进入 `while` 循环的时候，会将栈顶的作用域的 `loop_count` 加一。如果栈顶作用域的 `loop_count` 为 0，说明当前不在任何循环中，若此时再 `break` 或 `continue`，则会报错。
+首先，我补全了 `tacgen.py` 里的 `TACGen.visitCondExpr` 函数，完成了从三目运算符到 TAC 的转换。和 `if`-`else` 语句不同的一点是，**三目运算符是有返回值的**，所以需要新建一个临时变量用于存 `then` 或 `otherwise` 之一的返回值。
+
+然后，我补全了 `namer.py` 里的 `Namer.visitCondExpr` 函数，用来处理三目运算符，按照和 `if` 一样的顺序，分别访问 `cond`、`then` 和 `otherwise`。
+
+### Step 8
+
+首先，我在 `frontend/lexer/lex.py` 和 `frontend/parser/ply_parser.py` 中添加了 `for` 循环和 `break` 的 token 定义和语法规则，使得它们能够被正确识别。
+
+然后，我在 `frontend/ast/tree.py` 中添加了 `For` 和 `Continue` 两个类，同时在 `frontend/ast/visitor.py` 中补充了对应的 `Visitor` 成员函数。
+
+为了保证 `break` 和 `continue` 语句能够正确运作，我修改了 `frontend/scope/scope.py` 和 `frontend/scope/scopestack.py`，为每个 `scope` 添加了 `loop_count` 成员变量，用于**记录当前作用域位于多少个循环里**。
+
+同时，我修改了 `frontend/typecheck/namer.py`：
+- 补全了 `Namer.visitFor` 函数。我专门特判了 `stmt.cond` 为空的情况，此时按照实验文档，应该直接将空的 `cond` 看做**非零数字常量**，所以我将其赋值为了 `IntLiteral(1)`。
+- 修改了 `Namer.visitWhile` 和 `Namer.visitBreak` 函数，补全了 `Namer.visitContinue` 函数，保证在进入 `while` 循环的时候，会将栈顶的作用域的 `loop_count` 加一。如果栈顶作用域的 `loop_count` 为 `0`，说明当前不在任何循环中，若此时再 `break` 或 `continue`，则会报错。
+
+最后，我修改了 `frontend/tacgen/tacgen.py`：
+
+- 补全了 `TACGen.visitFor` 函数，实现了 `for` 循环的中间代码生成，包括 `init`、`cond`、`body` 和 `update` 四个部分。
+- 重载了 `TACGen.visitContinue` 函数，保证 `continue` 语句的跳转是正常的。先开始我没重载这个函数，发现 `continue` 语句的有无，对于最后的三地址码结果没有影响（直接忽视了 `continue` 语句的存在）。后来发现需要重载这个函数，加上就通过所有测试了。
 
 
 ## Stage 4 思考题
@@ -104,7 +113,7 @@ if (a)
 - 第一种方式：每次迭代固定执行 5 条指令。
 - 第二种方式：第一次迭代执行 3 条指令，之后每次迭代执行 6 条指令。
 
-从执行的指令条数这个角度来看，第一种翻译方式更好，因为对于循环中的每一次迭代而言，第一种方式相较于第二种方式总会少执行一条指令。这种方式可以减少总的指令执行数，从而提高程序的运行效率。
+从执行的指令条数这个角度来看，第一种翻译方式更好，因为对于循环中的每一次迭代而言，第一种方式相较于第二种方式**总会少执行一条指令**。这种方式可以减少总的指令执行数，从而提高程序的运行效率。
 
 #### 第 2 题
 
