@@ -4,16 +4,19 @@
 
 ## 实验内容
 
+### Step 6
+
 为了完成这次实验，我进行了以下工作：
 
-- 添加了 `frontend/scope/scopestack.py`，完成了 `ScopeStack` 类，实现了作用域栈的功能。
-  - 新建了 `newScope` 函数，实现新建一个（局部）作用域，并将其压入作用域栈内。
-  - 新建了 `lookup` 函数，实现了按照“从栈顶到栈底”，即从内层作用域到外层作用域的顺序，查找能否获取符号。
+首先，我添加了 `scopestack.py`，完成了 `ScopeStack` 类，实现了**作用域栈**的功能。这里，我设计了两个成员函数：
+- 新建了 `newScope` 函数，实现新建一个（局部）作用域，并将其压入作用域栈内。
+- 新建了 `lookup` 函数，实现了按照“从栈顶到栈底”，即从内层作用域到外层作用域的顺序，查找能否获取符号。设计这个函数，其实是为了能够复用原来 `Scope` 的代码，这样我只需要把 `Scope` 这一类型替换为 `ScopeStack`，而不用修改它的成员函数调用相关的语句。
 
-- 修改了 `frontend/typecheck/typer.py`，将 `Visitor[Scope, None]` 改为了 `Visitor[ScopeStack, None]`。
-- 修改了 `frontend/typecheck/namer.py` 中的相关语句，把 `ctx` 的类型改为 `ScopeStack`。
-  - 修改了 `Namer.visitFunction` 和 `Namer.visitBlock`，在函数开始时局部作用域压栈，并在函数结束时把对应作用域退栈。
-  - 修改了 `Namer.visitDeclaration`，只在当前的（栈顶）作用域里查找符号是否被声明。
+然后，我按照实验文档，修改了 `typer.py`，将 `Visitor[Scope, None]` 改为了 `Visitor[ScopeStack, None]`。同时，我把原来所有涉及到 `Scope` 的函数参数，全部修改为 `ScopeStack`。
+
+最后，我修改了 `namer.py` 中的相关语句，把 `ctx` 的类型改为 `ScopeStack`。同时，
+- 修改了 `Namer.visitFunction` 和 `Namer.visitBlock`，在函数开始时局部作用域**压栈**，并在函数结束时把对应作用域**退栈**。
+- 修改了 `Namer.visitDeclaration`，只在当前的**栈顶作用域**里查找符号是否被声明。
 
 
 ## Stage 3 思考题
@@ -25,7 +28,7 @@
 > 请画出下面 MiniDecaf 代码的控制流图。
 >
 > ```c
-> int main(){
+> int main() {
 >     int a = 2;
 >     if (a < 3) {
 >         {
