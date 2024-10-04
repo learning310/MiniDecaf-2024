@@ -4,19 +4,25 @@
 
 ## 实验内容
 
+### Step 5
+
 为了完成这次实验，我进行了以下工作：
 
-- 修改了 `utils/namer.py`，补充了 `visitIdentifier`、`visitDeclaration` 和 `visitAssignment`，使其能够正常生成 AST。
-  - `visitIdentifier` 函数处理的是标识符，使用 `ctx.lookup` 在当前作用域中查找标识符对应的符号，如果标识符没有被声明，就抛出异常。
-  - `visitDeclaration` 函数处理的是声明语句，使用 `ctx.lookup` 在当前作用域中查找是否有同名变量已经被声明，如果已经被声明就抛出异常。
-  - `visitAssignment` 函数处理的是赋值语句，会检查赋值式的左侧是否为标识符，如果不是则抛出异常。
+首先我修改了 `namer.py`，补充了 `visitIdentifier`、`visitDeclaration` 和 `visitAssignment`，使其能够正常生成 AST。
+- `visitIdentifier` 函数处理的是标识符，先用 `ctx.lookup` 在当前作用域中查找标识符对应的符号。
+  - 如果标识符没有被声明，就抛出 `DecafUndefinedVarError` 异常。
+  - 否则，就把这个标识符设置为该 AST 节点的 `symbol` 属性。
+- `visitDeclaration` 函数处理的是声明语句，使用 `ctx.lookup` 在当前作用域中查找是否有同名变量已经被声明
+  - 如果已经被声明过，这次是重复声明，就抛出 `DecafDeclConflictError` 异常。
+  - 否则，看是否有初始值，如果有就继续访问该子结点。
+- `visitAssignment` 函数处理的是赋值语句，会检查赋值式的左侧是否为标识符，如果不是则抛出 `DecafBadAssignTypeError` 异常。
 
-- 修改了 `frontend/tacgen/tacgen.py`，补充了 `visitIdentifier`、`visitDeclaration` 和 `visitAssignment`，使其能够正常生成中间代码。
-  - `visitIdentifier` 函数处理的是标识符，它将标识符映射到一个临时变量，以便在后续的代码生成中使用。
-  - `visitDeclaration` 函数处理的是声明语句，它为每个新声明的变量分配一个临时变量；如果有初始值，则也要赋初值。
-  - `visitAssignment` 函数处理的是赋值语句，它生成赋值指令的中间代码，将右侧表达式的值赋给左侧变量。
+然后，我修改了 `tacgen.py`，补充了 `visitIdentifier`、`visitDeclaration` 和 `visitAssignment`，使其能够正常生成 TAC。
+- `visitIdentifier` 函数处理的是标识符，它将标识符映射到一个临时变量，以便在后续的代码生成中使用。
+- `visitDeclaration` 函数处理的是声明语句，它为每个新声明的变量分配一个临时变量；如果有初始值，则也要赋初值。
+- `visitAssignment` 函数处理的是赋值语句，它生成赋值指令的中间代码，将右侧表达式的值赋给左侧变量。
 
-- 修改了 `backend/riscvasmemitter.py`，重载了 `RiscvAsmEmitter.RiscvInstrSelector.visitAssign`，使其能够用 `mv` 指令，将赋值语句翻译为目标代码。
+最后，我修改了 `riscvasmemitter.py`，重载了 `RiscvAsmEmitter.RiscvInstrSelector.visitAssign`，使其能够用 `mv` 指令，将赋值语句的 TAC 翻译为 RISC-V。
 
 ## Stage 2 思考题
 
