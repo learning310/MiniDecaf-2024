@@ -11,6 +11,7 @@ from utils.tac import tacop
 from utils.tac.temp import Temp
 from utils.tac.tacinstr import *
 from utils.tac.tacfunc import TACFunc
+from utils.tac.globalvar import GlobalVar
 from utils.tac.tacprog import TACProg
 from utils.tac.tacvisitor import TACVisitor
 
@@ -107,6 +108,20 @@ class TACFuncEmitter(TACVisitor):
         self.func.add(Call(func, temp, params))
         return temp
 
+    def visitGlobalVar(self, symbol: VarSymbol) -> Temp:
+        temp = self.freshTemp()
+        self.func.add(LoadSymbol(temp, symbol.name))
+        return temp
+
+    def visitGlobalAddr(self, addr: Temp) -> Temp:
+        dst = self.freshTemp()
+        self.func.add(Load(dst, addr))
+        return dst
+    
+    def visitGlobalAssign(self, base: Temp, src: Temp) -> Temp:
+        self.func.add(GlobalAssign(base, src))
+        return src
+
     def visitLabel(self, label: Label) -> None:
         self.func.add(Mark(label))
 
@@ -145,6 +160,8 @@ class TACGen(Visitor[TACFuncEmitter, None]):
     # Entry of this phase
     def transform(self, program: Program) -> TACProg:
         labelManager = LabelManager()
+
+        # Global functions
         tacFuncs = []
         for funcName, astFunc in program.functions().items():
             # in step9, you need to use real parameter count
@@ -152,7 +169,17 @@ class TACGen(Visitor[TACFuncEmitter, None]):
             astFunc.params.accept(self, emitter)
             astFunc.body.accept(self, emitter)
             tacFuncs.append(emitter.visitEnd())
-        return TACProg(tacFuncs)
+
+        # Global variables
+        globalVars = []
+        for var in program.declarations().values():
+            init_value = None
+            if var.init_expr != NULL:
+                if isinstance(var.init_expr, IntLiteral):
+                    init_value = var.init_expr.value
+            globalVars.append(GlobalVar(var.getattr('symbol').name, init_value))
+        
+        return TACProg(tacFuncs, globalVars)
 
     def visitBlock(self, block: Block, mv: TACFuncEmitter) -> None:
         for child in block:
@@ -172,7 +199,12 @@ class TACGen(Visitor[TACFuncEmitter, None]):
         """
         1. Set the 'val' attribute of ident as the temp variable of the 'symbol' attribute of ident.
         """
-        ident.setattr('val', ident.getattr('symbol').temp)
+        if ident.getattr('symbol').isGlobal:
+            global_var_addr = mv.visitGlobalVar(ident.getattr('symbol'))
+            ident.getattr('symbol').temp = global_var_addr
+            ident.setattr('val', mv.visitGlobalAddr(global_var_addr))
+        else:
+            ident.setattr('val', ident.getattr('symbol').temp)
 
     def visitParameter(self, param: Parameter, mv: TACFuncEmitter) -> None:
         varSymbol = param.getattr('symbol')
@@ -212,11 +244,19 @@ class TACGen(Visitor[TACFuncEmitter, None]):
         2. Use mv.visitAssignment to emit an assignment instruction.
         3. Set the 'val' attribute of expr as the value of assignment instruction.
         """
-        expr.rhs.accept(self, mv)
-        expr.lhs.accept(self, mv)
-        tempVarLHS = expr.lhs.getattr("val")
+        expr.rhs.accept(self, mv)        
         tempVarRHS = expr.rhs.getattr("val")
-        expr.setattr('val', mv.visitAssignment(tempVarLHS, tempVarRHS))
+
+        # If lhs is a global variable
+        if expr.lhs.getattr('symbol').isGlobal:
+            global_var_addr = mv.visitGlobalVar(expr.lhs.getattr('symbol'))
+            expr.lhs.getattr('symbol').temp = global_var_addr
+            result = mv.visitGlobalAssign(global_var_addr, tempVarRHS)
+        else:
+            expr.lhs.accept(self, mv)
+            tempVarLHS = expr.lhs.getattr("val")
+            result = mv.visitAssignment(tempVarLHS, tempVarRHS)
+        expr.setattr('val', result)
 
     def visitIf(self, stmt: If, mv: TACFuncEmitter) -> None:
         stmt.cond.accept(self, mv)

@@ -39,6 +39,11 @@ class DecafRedefinedFunctionError(Exception):
         super().__init__("Semantic error: redefined function '%s'" % name)
 
 
+class DecafRedefinedVariableError(Exception):
+    def __init__(self, name: str) -> None:
+        super().__init__("Semantic error: redefined variable '%s'" % name)
+
+
 class DecafBadIntValueError(Exception):
     def __init__(self, val: Union[str, int]) -> None:
         super().__init__("Semantic error: bad integer value " + str(val))

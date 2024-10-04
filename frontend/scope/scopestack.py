@@ -18,9 +18,6 @@ class ScopeStack:
     def top(self) -> Scope:
         return self.stk[-1]
     
-    def top2(self) -> Scope:
-        return self.stk[-2]
-    
     def bottom(self) -> Scope:
         return self.stk[0]
     
@@ -42,6 +39,9 @@ class ScopeStack:
             if scope.containsKey(name):
                 return scope.get(name)
         return None
+
+    def isGlobalScope(self) -> bool:
+        return self.top().kind == ScopeKind.GLOBAL
     
     # Increase the loop count of the top scope
     def increaseLoop(self) -> None:

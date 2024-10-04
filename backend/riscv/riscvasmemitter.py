@@ -5,6 +5,7 @@ from utils.label.label import Label, LabelKind
 from utils.riscv import Riscv, RvBinaryOp, RvUnaryOp
 from utils.tac.reg import Reg
 from utils.tac.tacfunc import TACFunc
+from utils.tac.globalvar import GlobalVar
 from utils.tac.tacinstr import *
 from utils.tac.tacvisitor import TACVisitor
 from utils.asmcodeprinter import AsmCodePrinter
@@ -21,6 +22,7 @@ class RiscvAsmEmitter():
         self,
         allocatableRegs: list[Reg],
         callerSaveRegs: list[Reg],
+        vars: list[GlobalVar],
     ):
         self.allocatableRegs = allocatableRegs
         self.callerSaveRegs = callerSaveRegs
@@ -28,9 +30,26 @@ class RiscvAsmEmitter():
     
         # the start of the asm code
         # int step10, you need to add the declaration of global var here
+
+        initialized_vars = [var for var in vars if var.initialized]
+        uninitialized_vars = [var for var in vars if not var.initialized]
+
+        self.printer.println(".data")
+        for var in initialized_vars:
+            self.printer.println(f'.globl {var.name}')
+            self.printer.printLabel(Label(LabelKind.TEMP, var.name))
+            self.printer.println(f".word {var.value}")
+        self.printer.println("")
+
+        self.printer.println(".bss")
+        for var in uninitialized_vars:
+            self.printer.println(f'.globl {var.name}')
+            self.printer.printLabel(Label(LabelKind.TEMP, var.name))
+            self.printer.println(".space 4")
+        self.printer.println("")
+
         self.printer.println(".text")
         self.printer.println(".global main")
-        self.printer.println("")
 
     # transform tac instrs to RiscV instrs
     # collect some info which is saved in SubroutineInfo for SubroutineEmitter
@@ -74,6 +93,15 @@ class RiscvAsmEmitter():
         
         def visitCall(self, instr: Call) -> None:
             self.seq.append(Riscv.Call(instr.label, instr.ret, instr.params))
+
+        def visitLoadSymbol(self, instr: LoadSymbol) -> None:
+            self.seq.append(Riscv.LoadSymbol(instr.dst, instr.symbol))
+        
+        def visitLoad(self, instr: Load) -> None:
+            self.seq.append(Riscv.Load(instr.src, instr.base, 0))
+
+        def visitGlobalAssign(self, instr: GlobalAssign) -> None:
+            self.seq.append(Riscv.StoreWord(instr.src, instr.base, instr.offset))
 
         def visitMark(self, instr: Mark) -> None:
             self.seq.append(Riscv.RiscvLabel(instr.label))

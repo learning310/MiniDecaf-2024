@@ -27,6 +27,9 @@ class AsmCodePrinter:
 
     def printComment(self, comment: str):
         self.buffer += self.INDENTS + self.COMMENT_PROMPT + " " + comment + "\n"
+    
+    def printSection(self, section: str, name: str = ""):
+        self.buffer += "." + section + " " + name + "\n"
 
     def close(self) -> str:
         return self.buffer

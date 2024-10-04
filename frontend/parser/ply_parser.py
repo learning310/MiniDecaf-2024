@@ -41,14 +41,21 @@ def p_empty(p: yacc.YaccProduction):
 
 def p_program(p):
     """
-    program : function
-        | program function
+    program : sentence
+        | program sentence
     """
     if len(p) == 2:
         p[0] = Program(p[1])
     else:
         p[1].children.append(p[2])
         p[0] = p[1]
+
+def p_sentence(p):
+    """
+    sentence : declaration Semi
+        | function
+    """
+    p[0] = p[1]
 
 
 def p_function_def(p):
@@ -269,10 +276,7 @@ def p_function_call(p):
     """
     postfix : Identifier LParen expression_list RParen
     """
-    if len(p) == 2:
-        p[0] = p[1]
-    else:
-        p[0] = Call(p[1], p[3])
+    p[0] = Call(p[1], p[3])
 
 
 def p_binary_expression(p):

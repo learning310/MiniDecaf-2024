@@ -38,9 +38,16 @@ class Namer(Visitor[ScopeStack, None]):
         if not program.hasMainFunc():
             raise DecafNoMainFuncError
         
-        redefinedFunc = program.getRedifinedFunc()
+        redefinedVar = program.getRedefinedVar()
+        if not redefinedVar is None:
+            raise DecafRedefinedVariableError(redefinedVar)
+        
+        redefinedFunc = program.getRedefinedFunc()
         if not redefinedFunc is None:
             raise DecafRedefinedFunctionError(redefinedFunc)
+
+        for decl in program.declarations().values():
+            decl.accept(self, ctx)
 
         for func in program.functions().values():
             func.accept(self, ctx)
@@ -167,7 +174,7 @@ class Namer(Visitor[ScopeStack, None]):
         """
         varSymbol = ctx.top().lookup(decl.ident.value)
         if varSymbol is None:
-            varSymbol = VarSymbol(decl.ident.value, decl.var_t.type)
+            varSymbol = VarSymbol(decl.ident.value, decl.var_t.type, ctx.isGlobalScope())
             ctx.top().declare(varSymbol)
         else:
             raise DecafDeclConflictError(decl.ident.value)

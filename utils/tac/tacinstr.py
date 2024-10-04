@@ -8,6 +8,7 @@ from utils.tac.reg import Reg
 from .tacop import *
 from .tacvisitor import TACVisitor
 from .temp import Temp
+from frontend.symbol.varsymbol import VarSymbol
 
 class TACInstr:
     def __init__(
@@ -218,3 +219,46 @@ class Call(TACInstr):
 
     def accept(self, v: TACVisitor) -> None:
         v.visitCall(self)
+
+
+# Load symbols.
+class LoadSymbol(TACInstr):
+    def __init__(self, dst: Temp, symbol: str) -> None:
+        super().__init__(InstrKind.SEQ, [dst], [], None)
+        self.dst = dst
+        self.symbol = symbol
+
+    def __str__(self) -> str:
+        return "%s = &%s" % (self.dst, self.symbol)
+
+    def accept(self, v: TACVisitor) -> None:
+        v.visitLoadSymbol(self)
+
+
+# Load global variables.
+class Load(TACInstr):
+    def __init__(self, src: Temp, base: Temp) -> None:
+        super().__init__(InstrKind.SEQ, [], [src, base], None)
+        self.src = src
+        self.base = base
+
+    def __str__(self) -> str:
+        return "%s = *%s" % (self.src, self.base)
+
+    def accept(self, v: TACVisitor) -> None:
+        v.visitLoad(self)
+
+
+# Assign a value to a global address.
+class GlobalAssign(TACInstr):
+    def __init__(self, base: Temp, src: Temp, offset: int = 0) -> None:
+        super().__init__(InstrKind.SEQ, [], [src, base], None)
+        self.base = base
+        self.offset = offset
+        self.src = src
+
+    def __str__(self) -> str:
+        return "%s[%s] = %s" % (self.base, self.offset, self.src)
+
+    def accept(self, v: TACVisitor) -> None:
+        v.visitGlobalAssign(self)

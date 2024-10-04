@@ -60,3 +60,10 @@ class CondBranchOp(Enum):
 class TacFuncOp(Enum):
     CALL = auto()
     DECL_PARAMS = auto()
+
+
+# Kinds of instructions for load global symbols.
+@unique
+class TacLoadOp(Enum):
+    LOAD = auto()
+    LOAD_SYMBOL = auto()
