@@ -4,12 +4,45 @@
 
 ## 实验内容
 
-为了完成这次实验，我进行了以下工作：
+### Step 1
 
-- 修改了 `utils/tac/tacop.py`，补全了一元运算符和二元运算符的三地址码定义。
-- 修改了 `utils/riscv.py`，补充了 RISC-V 中的部分指令。
-- 修改了 `frontend/tacgen/tacgen.py`，在其中的 `TACGen.visitUnary` 和 `TACGen.visitBinary` 函数中处理了一元运算符和二元运算符，使其能够正常生成中间代码。
-- 修改了 `backend/riscvasmemitter.py` 中的 `RiscvAsmEmitter.RiscvInstrSelector.visitUnary` 和 `RiscvAsmEmitter.RiscvInstrSelector.visitBinary` 函数，使其能够由中间代码生成了目标代码。
+Step 1 没有需要修改的代码。我认真阅读了代码框架，大致了解了文件的组织结构和各个文件的作用。同时，我也通过阅读 [PLY (Python Lex-Yacc) 快速入门](https://www.dabeaz.com/ply/ply.html) 的部分章节，知道了 `ply` 该如何使用。
+
+### Step 2
+
+我在 `tacgen.py` 和 `riscvasmemitter.py` 中的一元操作列表中添加了**按位非**和**逻辑非**两种运算，并且在 `RvUnaryOp` 和 `Riscv` 两个枚举类中添加了这两种一元运算符。
+
+### Step 3
+
+Step 3 与 Step 2 是类似的。我在 `tacgen.py` 和 `riscvasmemitter.py` 中的二元操作列表中添加了**减法**、**乘法**、**除法**、**取模**四种运算，并且在 `RvUnaryOp` 和 `Riscv` 两个枚举类中添加了这四种二元运算符。
+
+### Step 4
+
+Step 4 与 Step 2、Step 3 是类似的，继续向 `RvUnaryOp` 和 `Riscv` 两个枚举类中补充运算符即可。但 Step 4 与前面两个 step 也有不同：比较和逻辑运算，在 TAC 中可以**用一条指令实现**，但在 RISC-V 中，只有 `<` 和 `>` 是可以**用一条指令实现**的，其余指令都**至少需要用两条指令才能实现**。所以，在 `riscvasmemitter.py` 中，需要添加 `if-else` 语句，而不是单纯地补充操作列表。
+
+**逻辑与**
+
+用 `snez` 检查 `lhs` 是否为 `0`，并用 `sub` 将结果取相反数：此时如果 `lhs` 是 `0`，则结果为 `-1`；否则，结果为 `0`。
+
+由于 `-1` 的二进制表示**为全一**，故此时再用 `and` 将此结果和 `rhs` 进行按位与运算，可以得到二者的逻辑与。
+
+最后再用 `snez` 来判断结果是否非 `0`。
+
+**相等**
+
+用 `xor` 进行异或运算，然后用 `seqz` 判断结果是否为 `0`。
+
+**不等**
+
+用 `xor` 进行异或运算，然后用 `snez` 判断结果是否非 `0`。
+
+**大于等于**
+
+用 `slt` 判断是否小于，然后用 `seqz` 对结果取逻辑非。
+
+**小于等于**
+
+用 `sgt` 判断是否大于，然后用 `seqz` 对结果取逻辑非。
 
 ## Stage 0 思考题
 
@@ -29,9 +62,9 @@
 
 #### 第 2 题
 
-> 我们的框架现在对于 main 函数没有返回值的情况是在哪一步处理的？报的是什么错？
+> 我们的框架现在对于 `main` 函数没有返回值的情况是在哪一步处理的？报的是什么错？
 
-对于 main 函数没有返回值的情况，在 `parser.parse` 中进行语法分析的时候会对其进行处理，已有框架返回的是 `Syntax error` 这一错误。
+对于 `main` 函数没有返回值的情况，在 `parser.parse` 中进行语法分析的时候会对其进行处理，已有框架返回的是 `Syntax error` 这一错误。
 
 我编写了以下程序：
 
@@ -80,16 +113,16 @@ Syntax error: EOF
 > #include <stdio.h>
 > 
 > int main() {
->      int a = 左操作数;
->      int b = 右操作数;
->      printf("%d\n", a / b);
->      return 0;
+>     int a = 左操作数;
+>     int b = 右操作数;
+>     printf("%d\n", a / b);
+>     return 0;
 > }
 > ```
 
 这是左操作数为 `-2147483648`，右操作数为 `-1`。
 
-- 我的电脑（x86-64 架构）中编译并运行的结果：无输出。
+- 我的电脑（x86-64 架构，Windows 操作系统）中编译并运行的结果：无输出。
 - RISCV-32 的 qemu 模拟器中编译并运行的结果：`-2147483648`。
 
 ### Step 4
@@ -113,3 +146,4 @@ for (int i = 0; i < n; i++) {
 ```
 
 这样对于 `index >= 0` 的短路求值，可以保证 `brr[index]` 这样的访问必定是合法的。 
+
