@@ -102,9 +102,6 @@ class TACFuncEmitter(TACVisitor):
     def visitReturn(self, value: Optional[Temp]) -> None:
         self.func.add(Return(value))
 
-    def visitParameter(self, temp: Temp) -> None:
-        self.func.add(DeclParams(temp))
-
     def visitCall(self, func: FuncLabel, params: list[Temp]) -> Temp:
         temp = self.freshTemp()
         self.func.add(Call(func, temp, params))
