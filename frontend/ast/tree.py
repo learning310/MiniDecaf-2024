@@ -55,7 +55,7 @@ class Program(ListNode["Function"]):
         super().__init__("program", list(children))
 
     def functions(self) -> dict[str, Function]:
-        return {func.ident.value: func for func in self if isinstance(func, Function)}\
+        return {func.ident.value: func for func in self if isinstance(func, Function)}
     
     def getRedifinedFunc(self) -> bool:
         func_names = set()
