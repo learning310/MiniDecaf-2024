@@ -210,8 +210,6 @@ class Namer(Visitor[ScopeStack, None]):
         if isinstance(expr.lhs, Identifier) or isinstance(expr.lhs, ArrayAccess):
             expr.lhs.accept(self, ctx)
             expr.rhs.accept(self, ctx)
-            if not isinstance(expr.lhs.getattr('symbol'), VarSymbol) and not isinstance(expr.lhs.getattr('symbol'), ArrSymbol):
-                raise DecafBadAssignTypeError
         else:
             raise DecafBadAssignTypeError
 

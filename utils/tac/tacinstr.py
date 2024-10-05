@@ -251,14 +251,14 @@ class Load(TACInstr):
 
 # Assign a value to a global address.
 class AddrAssign(TACInstr):
-    def __init__(self, base: Temp, src: Temp, offset: int = 0) -> None:
-        super().__init__(InstrKind.SEQ, [], [src, base], None)
-        self.base = base
+    def __init__(self, addr: Temp, src: Temp, offset: int = 0) -> None:
+        super().__init__(InstrKind.SEQ, [], [src, addr], None)
+        self.addr = addr
         self.offset = offset
         self.src = src
 
     def __str__(self) -> str:
-        return "%s[%s] = %s" % (self.base, self.offset, self.src)
+        return "%s[%s] = %s" % (self.addr, self.offset, self.src)
 
     def accept(self, v: TACVisitor) -> None:
         v.visitAddrAssign(self)

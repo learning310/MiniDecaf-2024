@@ -101,7 +101,7 @@ class RiscvAsmEmitter():
             self.seq.append(Riscv.Load(instr.src, instr.base, 0))
 
         def visitAddrAssign(self, instr: AddrAssign) -> None:
-            self.seq.append(Riscv.StoreWord(instr.src, instr.base, instr.offset))
+            self.seq.append(Riscv.StoreWord(instr.src, instr.addr, instr.offset))
 
         def visitAlloc(self, instr: Alloc) -> None:
             self.seq.append(Riscv.Alloc(instr.dst, instr.size))

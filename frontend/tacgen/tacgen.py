@@ -121,8 +121,8 @@ class TACFuncEmitter(TACVisitor):
         self.func.add(Load(dst, addr))
         return dst
     
-    def visitAddrAssign(self, base: Temp, src: Temp) -> Temp:
-        self.func.add(AddrAssign(base, src))
+    def visitAddrAssign(self, addr: Temp, src: Temp) -> Temp:
+        self.func.add(AddrAssign(addr, src))
         return src
 
     def visitAlloc(self, size: int) -> Temp:
@@ -187,6 +187,7 @@ class TACGen(Visitor[TACFuncEmitter, None]):
                     init_value = var.init_expr.value
             globalVars.append(GlobalVar(var.getattr('symbol').name, init_value, var.getattr('symbol').type.size))
         
+        # Global arrays
         for arr in program.array_declarations().values():
             globalVars.append(GlobalVar(arr.getattr('symbol').name, None, arr.getattr('symbol').type.size))
         
@@ -271,6 +272,7 @@ class TACGen(Visitor[TACFuncEmitter, None]):
         is_rvalue = mv.is_rvalue
         mv.is_rvalue = False
         expr.base.accept(self, mv)
+
         mv.is_rvalue = True
         expr.index.accept(self, mv)
 
@@ -284,6 +286,7 @@ class TACGen(Visitor[TACFuncEmitter, None]):
                 mv.visitLoad(expr.getattr('symbol').type.size)
             )
         )
+
         if is_rvalue:
             if isinstance(expr.getattr('symbol').type, ArrayType):
                 raise DecafBadOperationTypeError
@@ -296,20 +299,25 @@ class TACGen(Visitor[TACFuncEmitter, None]):
         3. Set the 'val' attribute of expr as the value of assignment instruction.
         """
         expr.rhs.accept(self, mv)
+        tempVarRHS = expr.rhs.getattr("val")
         mv.is_rvalue = False
+
         expr.lhs.accept(self, mv)
+        tempVarLHS = expr.lhs.getattr('symbol').addr \
+            if isinstance(expr.lhs.getattr('symbol'), ArrSymbol) \
+                else expr.lhs.getattr('symbol').temp
         mv.is_rvalue = True
 
         if isinstance(expr.lhs.getattr('symbol').type, ArrayType):
             raise DecafBadOperationTypeError
 
         if isinstance(expr.lhs.getattr('symbol'), ArrSymbol):
-            result = mv.visitAddrAssign(expr.lhs.getattr('symbol').addr, expr.rhs.getattr("val"))
+            result = mv.visitAddrAssign(tempVarLHS, tempVarRHS)
         else:
             if expr.lhs.getattr('symbol').isGlobal:
-                result = mv.visitAddrAssign(expr.lhs.getattr('symbol').temp, expr.rhs.getattr("val"))
+                result = mv.visitAddrAssign(tempVarLHS, tempVarRHS)
             else:
-                result = mv.visitAssignment(expr.lhs.getattr('symbol').temp, expr.rhs.getattr("val"))
+                result = mv.visitAssignment(tempVarLHS, tempVarRHS)
         expr.setattr('val', result)
 
     def visitIf(self, stmt: If, mv: TACFuncEmitter) -> None:

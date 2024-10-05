@@ -106,7 +106,7 @@ class DecafBadIndexError(Exception):
 
 class DecafTypeMismatchError(Exception):
     def __init__(self) -> None:
-        super().__init__("Semantic error: type mismatch")
+        super().__init__("Semantic error: type mismatch") # TODO: Type mismatch
 
 
 class DecafBadReturnTypeError(Exception):
@@ -121,12 +121,12 @@ class DecafBadFuncCallError(Exception):
 
 class DecafBadAssignTypeError(Exception):
     def __init__(self) -> None:
-        super().__init__("Semantic error: cannot assign to a non-lvalue")
+        super().__init__("Semantic error: cannot assign to a non-lvalue") # TODO: Type mismatch
 
 
 class DecafBadOperationTypeError(Exception):
     def __init__(self) -> None:
-        super().__init__("Semantic error: cannot perform operation on the given type")
+        super().__init__("Semantic error: cannot perform operation on the given type") # TODO: Type mismatch
 
 
 class IllegalArgumentException(Exception):
