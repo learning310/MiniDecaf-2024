@@ -61,7 +61,13 @@ class Visitor(Protocol[T, U]):  # type: ignore
     def visitParameterList(self, that: ParameterList, ctx: T) -> Optional[Sequence[Optional[U]]]:
         return self.visitOther(that, ctx)
 
-    def visitDeclaration(self, that: Declaration, ctx: T) -> Optional[U]:
+    def visitVarDeclaration(self, that: VarDeclaration, ctx: T) -> Optional[U]:
+        return self.visitOther(that, ctx)
+    
+    def visitArrayDeclaration(self, that: ArrayDeclaration, ctx: T) -> Optional[U]:
+        return self.visitOther(that, ctx)
+
+    def visitArrayAccess(self, that: ArrayAccess, ctx: T) -> Optional[U]:
         return self.visitOther(that, ctx)
 
     def visitUnary(self, that: Unary, ctx: T) -> Optional[U]:

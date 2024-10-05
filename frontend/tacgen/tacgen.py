@@ -4,6 +4,7 @@ from frontend.ast import node
 from frontend.ast.tree import *
 from frontend.ast.visitor import Visitor
 from frontend.symbol.varsymbol import VarSymbol
+from frontend.symbol.arrsymbol import ArrSymbol
 from frontend.type.array import ArrayType
 from utils.label.blocklabel import BlockLabel
 from utils.label.funclabel import FuncLabel
@@ -52,6 +53,8 @@ class TACFuncEmitter(TACVisitor):
         self.breakLabelStack = []
 
         self.func.add(DeclParams([Temp(i) for i in range(numArgs)]))
+
+        self.is_rvalue = True
 
     # To get a fresh new temporary variable.
     def freshTemp(self) -> Temp:
@@ -108,19 +111,24 @@ class TACFuncEmitter(TACVisitor):
         self.func.add(Call(func, temp, params))
         return temp
 
-    def visitGlobalVar(self, symbol: VarSymbol) -> Temp:
+    def visitGlobalSymbol(self, symbol: VarSymbol) -> Temp:
         temp = self.freshTemp()
         self.func.add(LoadSymbol(temp, symbol.name))
         return temp
 
-    def visitGlobalAddr(self, addr: Temp) -> Temp:
+    def visitAddr(self, addr: Temp) -> Temp:
         dst = self.freshTemp()
         self.func.add(Load(dst, addr))
         return dst
     
-    def visitGlobalAssign(self, base: Temp, src: Temp) -> Temp:
-        self.func.add(GlobalAssign(base, src))
+    def visitAddrAssign(self, base: Temp, src: Temp) -> Temp:
+        self.func.add(AddrAssign(base, src))
         return src
+
+    def visitAlloc(self, size: int) -> Temp:
+        temp = self.freshTemp()
+        self.func.add(Alloc(temp, size))
+        return temp
 
     def visitLabel(self, label: Label) -> None:
         self.func.add(Mark(label))
@@ -172,12 +180,15 @@ class TACGen(Visitor[TACFuncEmitter, None]):
 
         # Global variables
         globalVars = []
-        for var in program.declarations().values():
+        for var in program.var_declarations().values():
             init_value = None
             if var.init_expr != NULL:
                 if isinstance(var.init_expr, IntLiteral):
                     init_value = var.init_expr.value
-            globalVars.append(GlobalVar(var.getattr('symbol').name, init_value))
+            globalVars.append(GlobalVar(var.getattr('symbol').name, init_value, var.getattr('symbol').type.size))
+        
+        for arr in program.array_declarations().values():
+            globalVars.append(GlobalVar(arr.getattr('symbol').name, None, arr.getattr('symbol').type.size))
         
         return TACProg(tacFuncs, globalVars)
 
@@ -199,12 +210,25 @@ class TACGen(Visitor[TACFuncEmitter, None]):
         """
         1. Set the 'val' attribute of ident as the temp variable of the 'symbol' attribute of ident.
         """
+        if mv.is_rvalue and isinstance(ident.getattr('symbol').type, ArrayType):
+            raise DecafBadOperationTypeError
         if ident.getattr('symbol').isGlobal:
-            global_var_addr = mv.visitGlobalVar(ident.getattr('symbol'))
-            ident.getattr('symbol').temp = global_var_addr
-            ident.setattr('val', mv.visitGlobalAddr(global_var_addr))
+            if isinstance(ident.getattr('symbol'), VarSymbol):
+                global_var_addr = mv.visitGlobalSymbol(ident.getattr('symbol'))
+                ident.getattr('symbol').temp = global_var_addr
+                if mv.is_rvalue:
+                    ident.setattr('val', mv.visitAddr(global_var_addr))
+            if isinstance(ident.getattr('symbol'), ArrSymbol):
+                global_arr_addr = mv.visitGlobalSymbol(ident.getattr('symbol'))
+                ident.getattr('symbol').addr = global_arr_addr
+                if mv.is_rvalue:
+                    ident.setattr('val', mv.visitAddr(global_arr_addr))
         else:
-            ident.setattr('val', ident.getattr('symbol').temp)
+            if mv.is_rvalue:
+                if isinstance(ident.getattr('symbol'), VarSymbol):
+                    ident.setattr('val', ident.getattr('symbol').temp)
+                if isinstance(ident.getattr('symbol'), ArrSymbol):
+                    ident.setattr('val', ident.getattr('symbol').addr)
 
     def visitParameter(self, param: Parameter, mv: TACFuncEmitter) -> None:
         varSymbol = param.getattr('symbol')
@@ -225,7 +249,7 @@ class TACGen(Visitor[TACFuncEmitter, None]):
             FuncLabel(call.ident.value), [arg.getattr('val') for arg in call.argument_list]
         ))
 
-    def visitDeclaration(self, decl: Declaration, mv: TACFuncEmitter) -> None:
+    def visitVarDeclaration(self, decl: VarDeclaration, mv: TACFuncEmitter) -> None:
         """
         1. Get the 'symbol' attribute of decl.
         2. Use mv.freshTemp to get a new temp variable for this symbol.
@@ -238,24 +262,54 @@ class TACGen(Visitor[TACFuncEmitter, None]):
             tempVarInitExpr = decl.init_expr.getattr('val')
             mv.visitAssignment(varSymbol.temp, tempVarInitExpr)
 
+    def visitArrayDeclaration(self, decl: ArrayDeclaration, mv: TACFuncEmitter) -> None:
+        arraySymbol = decl.getattr('symbol')
+        arraySymbol.addr = mv.visitAlloc(arraySymbol.type.size)
+
+    def visitArrayAccess(self, expr: ArrayAccess, mv: TACFuncEmitter) -> None:
+
+        is_rvalue = mv.is_rvalue
+        mv.is_rvalue = False
+        expr.base.accept(self, mv)
+        mv.is_rvalue = True
+        expr.index.accept(self, mv)
+
+        base_symbol = expr.base.getattr('symbol')
+        expr.getattr('symbol').addr = mv.visitBinary(
+            tacop.TacBinaryOp.ADD,
+            base_symbol.addr,
+            mv.visitBinary(
+                tacop.TacBinaryOp.MUL,
+                expr.index.getattr("val"),
+                mv.visitLoad(expr.getattr('symbol').type.size)
+            )
+        )
+        if is_rvalue:
+            if isinstance(expr.getattr('symbol').type, ArrayType):
+                raise DecafBadOperationTypeError
+            expr.setattr('val', mv.visitAddr(expr.getattr('symbol').addr))
+
     def visitAssignment(self, expr: Assignment, mv: TACFuncEmitter) -> None:
         """
         1. Visit the right hand side of expr, and get the temp variable of left hand side.
         2. Use mv.visitAssignment to emit an assignment instruction.
         3. Set the 'val' attribute of expr as the value of assignment instruction.
         """
-        expr.rhs.accept(self, mv)        
-        tempVarRHS = expr.rhs.getattr("val")
+        expr.rhs.accept(self, mv)
+        mv.is_rvalue = False
+        expr.lhs.accept(self, mv)
+        mv.is_rvalue = True
 
-        # If lhs is a global variable
-        if expr.lhs.getattr('symbol').isGlobal:
-            global_var_addr = mv.visitGlobalVar(expr.lhs.getattr('symbol'))
-            expr.lhs.getattr('symbol').temp = global_var_addr
-            result = mv.visitGlobalAssign(global_var_addr, tempVarRHS)
+        if isinstance(expr.lhs.getattr('symbol').type, ArrayType):
+            raise DecafBadOperationTypeError
+
+        if isinstance(expr.lhs.getattr('symbol'), ArrSymbol):
+            result = mv.visitAddrAssign(expr.lhs.getattr('symbol').addr, expr.rhs.getattr("val"))
         else:
-            expr.lhs.accept(self, mv)
-            tempVarLHS = expr.lhs.getattr("val")
-            result = mv.visitAssignment(tempVarLHS, tempVarRHS)
+            if expr.lhs.getattr('symbol').isGlobal:
+                result = mv.visitAddrAssign(expr.lhs.getattr('symbol').temp, expr.rhs.getattr("val"))
+            else:
+                result = mv.visitAssignment(expr.lhs.getattr('symbol').temp, expr.rhs.getattr("val"))
         expr.setattr('val', result)
 
     def visitIf(self, stmt: If, mv: TACFuncEmitter) -> None:

@@ -46,36 +46,30 @@ class ListNode(Node, Generic[_T]):
         return None if ret.count(None) == len(ret) else ret
 
 
-class Program(ListNode[Union["Function", "Declaration"]]):
+class Program(ListNode[Union["Function", "VarDeclaration"]]):
     """
     AST root. It should have only one children before step9.
     """
 
-    def __init__(self, *children: Union[Function, Declaration]) -> None:
+    def __init__(self, *children: Union[Function, VarDeclaration]) -> None:
         super().__init__("program", list(children))
 
-    def declarations(self) -> dict[str, Declaration]:
-        return {decl.ident.value: decl for decl in self if isinstance(decl, Declaration)}
+    def var_declarations(self) -> dict[str, VarDeclaration]:
+        return {decl.ident.value: decl for decl in self if isinstance(decl, VarDeclaration)}
+    
+    def array_declarations(self) -> dict[str, ArrayDeclaration]:
+        return {decl.ident.value: decl for decl in self if isinstance(decl, ArrayDeclaration)}
 
     def functions(self) -> dict[str, Function]:
         return {func.ident.value: func for func in self if isinstance(func, Function)}
     
-    def getRedefinedVar(self) -> bool:
-        var_names = set()
+    def getRedefinedSymbol(self) -> bool:
+        names = set()
         for decl in self:
-            if isinstance(decl, Declaration):
-                if decl.ident.value in var_names:
+            if isinstance(decl, VarDeclaration) or isinstance(decl, ArrayDeclaration) or isinstance(decl, Function):
+                if decl.ident.value in names:
                     return decl.ident.value
-                var_names.add(decl.ident.value)
-        return None
-    
-    def getRedefinedFunc(self) -> bool:
-        func_names = set()
-        for func in self:
-            if isinstance(func, Function):
-                if func.ident.value in func_names:
-                    return func.ident.value
-                func_names.add(func.ident.value)
+                names.add(decl.ident.value)
         return None
 
     def hasMainFunc(self) -> bool:
@@ -260,12 +254,12 @@ class Continue(Statement):
         return True
 
 
-class Block(Statement, ListNode[Union["Statement", "Declaration"]]):
+class Block(Statement, ListNode[Union["Statement", "VarDeclaration"]]):
     """
     AST node of block "statement".
     """
 
-    def __init__(self, *children: Union[Statement, Declaration]) -> None:
+    def __init__(self, *children: Union[Statement, VarDeclaration]) -> None:
         super().__init__("block", list(children))
 
     def accept(self, v: Visitor[T, U], ctx: T):
@@ -275,9 +269,9 @@ class Block(Statement, ListNode[Union["Statement", "Declaration"]]):
         return True
 
 
-class Declaration(Node):
+class VarDeclaration(Node):
     """
-    AST node of declaration.
+    AST node of variable declaration.
     """
 
     def __init__(
@@ -286,7 +280,7 @@ class Declaration(Node):
         ident: Identifier,
         init_expr: Optional[Expression] = None,
     ) -> None:
-        super().__init__("declaration")
+        super().__init__("var_declaration")
         self.var_t = var_t
         self.ident = ident
         self.init_expr = init_expr or NULL
@@ -298,7 +292,7 @@ class Declaration(Node):
         return 3
 
     def accept(self, v: Visitor[T, U], ctx: T):
-        return v.visitDeclaration(self, ctx)
+        return v.visitVarDeclaration(self, ctx)
 
 
 class Expression(Node):
@@ -559,3 +553,47 @@ class Call(Expression):
 
     def __str__(self) -> str:
         return f"call({self.ident})"
+
+
+class ArrayDeclaration(Node):
+    """
+    AST node of array declaration.
+    """
+
+    def __init__(self, var_t: TypeLiteral, ident: Identifier, sizes: list[int]) -> None:
+        super().__init__("array_declaration")
+        self.var_t = var_t
+        self.ident = ident
+        self.sizes = sizes
+        for size in self.sizes:
+            if size <= 0:
+                raise DecafNonPositiveArraySizeError(ident.value, size)
+
+    def __getitem__(self, key: int) -> Node:
+        return (self.var_t, self.ident, self.sizes)[key]
+    
+    def __len__(self) -> int:
+        return 3
+
+    def accept(self, v: Visitor[T, U], ctx: T):
+        return v.visitArrayDeclaration(self, ctx)
+
+
+class ArrayAccess(Node):
+    """
+    AST node of array access.
+    """
+
+    def __init__(self,  base: Union[Identifier, ArrayAccess], index: Expression) -> None:
+        super().__init__("array_access")
+        self.base = base
+        self.index = index
+
+    def __getitem__(self, key: int) -> Node:
+        return (self.base, self.index)[key]
+    
+    def __len__(self) -> int:
+        return 2
+    
+    def accept(self, v: Visitor[T, U], ctx: T):
+        return v.visitArrayAccess(self, ctx)

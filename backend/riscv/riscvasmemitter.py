@@ -45,7 +45,7 @@ class RiscvAsmEmitter():
         for var in uninitialized_vars:
             self.printer.println(f'.globl {var.name}')
             self.printer.printLabel(Label(LabelKind.TEMP, var.name))
-            self.printer.println(".space 4")
+            self.printer.println(f".space {var.size}")
         self.printer.println("")
 
         self.printer.println(".text")
@@ -100,8 +100,11 @@ class RiscvAsmEmitter():
         def visitLoad(self, instr: Load) -> None:
             self.seq.append(Riscv.Load(instr.src, instr.base, 0))
 
-        def visitGlobalAssign(self, instr: GlobalAssign) -> None:
+        def visitAddrAssign(self, instr: AddrAssign) -> None:
             self.seq.append(Riscv.StoreWord(instr.src, instr.base, instr.offset))
+
+        def visitAlloc(self, instr: Alloc) -> None:
+            self.seq.append(Riscv.Alloc(instr.dst, instr.size))
 
         def visitMark(self, instr: Mark) -> None:
             self.seq.append(Riscv.RiscvLabel(instr.label))
@@ -228,7 +231,6 @@ class RiscvSubroutineEmitter():
 
     def emitLabel(self, label: Label):
         self.buf.append(Riscv.RiscvLabel(label))
-
     
     def emitFunc(self):
         self.printer.printComment("start of prologue")
@@ -284,3 +286,8 @@ class RiscvSubroutineEmitter():
 
         self.printer.printInstr(Riscv.NativeReturn())
         self.printer.println("")
+
+    def alloc(self, dst: Reg, size: int) -> None:
+        self.buf.append(Riscv.LoadImm(dst, self.nextLocalOffset))
+        self.buf.append(Riscv.Binary(RvBinaryOp.ADD, dst, dst, Riscv.SP)) # TODO: check if this is correct
+        self.nextLocalOffset += size

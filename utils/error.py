@@ -34,19 +34,19 @@ class DecafDeclConflictError(Exception):
         super().__init__("Semantic error: declaration conflict '%s'" % name)
 
 
-class DecafRedefinedFunctionError(Exception):
+class DecafRedefinedSymbolError(Exception):
     def __init__(self, name: str) -> None:
-        super().__init__("Semantic error: redefined function '%s'" % name)
-
-
-class DecafRedefinedVariableError(Exception):
-    def __init__(self, name: str) -> None:
-        super().__init__("Semantic error: redefined variable '%s'" % name)
+        super().__init__("Semantic error: redefined symbol '%s'" % name)
 
 
 class DecafBadIntValueError(Exception):
     def __init__(self, val: Union[str, int]) -> None:
         super().__init__("Semantic error: bad integer value " + str(val))
+
+
+class DecafNonPositiveArraySizeError(Exception):
+    def __init__(self, name: str, size: int) -> None:
+        super().__init__("Semantic error: array '%s' with non-positive size '%d'" % (name, size))
 
 
 class DecafUndefinedVarError(Exception):
@@ -122,6 +122,11 @@ class DecafBadFuncCallError(Exception):
 class DecafBadAssignTypeError(Exception):
     def __init__(self) -> None:
         super().__init__("Semantic error: cannot assign to a non-lvalue")
+
+
+class DecafBadOperationTypeError(Exception):
+    def __init__(self) -> None:
+        super().__init__("Semantic error: cannot perform operation on the given type")
 
 
 class IllegalArgumentException(Exception):

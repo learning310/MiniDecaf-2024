@@ -229,18 +229,58 @@ def p_opt_expression_empty(p):
     p[0] = NULL
 
 
-def p_declaration(p):
+def p_var_declaration(p):
     """
     declaration : type Identifier
     """
-    p[0] = Declaration(p[1], p[2])
+    p[0] = VarDeclaration(p[1], p[2])
 
 
-def p_declaration_init(p):
+def p_var_declaration_init(p):
     """
     declaration : type Identifier Assign expression
     """
-    p[0] = Declaration(p[1], p[2], p[4])
+    p[0] = VarDeclaration(p[1], p[2], p[4])
+
+
+def p_array_declaration(p):
+    """
+    declaration : type Identifier declaration_brackets
+    """
+    p[0] = ArrayDeclaration(p[1], p[2], p[3])
+
+
+def p_array_declaration_brakets(p):
+    """
+    declaration_brackets : declaration_brackets LBracket Integer RBracket
+        | LBracket Integer RBracket
+    """
+    if len(p) == 4:
+        p[0] = [p[2].value]
+    else:
+        p[1].append(p[3].value)
+        p[0] = p[1]
+
+
+def p_array_access(p):
+    """
+    postfix : array_access
+    """
+    p[0] = p[1]
+
+
+def p_array_access_uni(p):
+    """
+    array_access : Identifier LBracket expression RBracket
+    """
+    p[0] = ArrayAccess(p[1], p[3])
+
+
+def p_array_access_poly(p):
+    """
+    array_access : array_access LBracket expression RBracket
+    """
+    p[0] = ArrayAccess(p[1], p[3])
 
 
 def p_expression_precedence(p):
@@ -282,6 +322,7 @@ def p_function_call(p):
 def p_binary_expression(p):
     """
     assignment : Identifier Assign expression
+        | postfix Assign expression
     logical_or : logical_or Or logical_and
     logical_and : logical_and And bit_or
     bit_or : bit_or BitOr xor

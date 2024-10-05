@@ -250,7 +250,7 @@ class Load(TACInstr):
 
 
 # Assign a value to a global address.
-class GlobalAssign(TACInstr):
+class AddrAssign(TACInstr):
     def __init__(self, base: Temp, src: Temp, offset: int = 0) -> None:
         super().__init__(InstrKind.SEQ, [], [src, base], None)
         self.base = base
@@ -261,4 +261,18 @@ class GlobalAssign(TACInstr):
         return "%s[%s] = %s" % (self.base, self.offset, self.src)
 
     def accept(self, v: TACVisitor) -> None:
-        v.visitGlobalAssign(self)
+        v.visitAddrAssign(self)
+
+
+# Allocate memory on the stack.
+class Alloc(TACInstr):
+    def __init__(self, dst: Temp, size: int) -> None:
+        super().__init__(InstrKind.SEQ, [dst], [], None)
+        self.dst = dst
+        self.size = size
+
+    def __str__(self) -> str:
+        return f"{self.dst} = alloc {self.size}"
+    
+    def accept(self, v: TACVisitor) -> None:
+        v.visitAlloc(self)

@@ -1,5 +1,8 @@
+import math
 from typing import Protocol, TypeVar, cast
 
+from ..ast.node import T
+from ..ast.tree import ArrayAccess
 from frontend.ast.node import Node, NullType
 from frontend.ast.tree import *
 from frontend.ast.visitor import RecursiveVisitor, Visitor
@@ -9,6 +12,7 @@ from frontend.scope.scopestack import ScopeStack
 from frontend.symbol.funcsymbol import FuncSymbol
 from frontend.symbol.symbol import Symbol
 from frontend.symbol.varsymbol import VarSymbol
+from frontend.symbol.arrsymbol import ArrSymbol
 from frontend.type.array import ArrayType
 from frontend.type.type import DecafType
 from utils.error import *
@@ -38,15 +42,14 @@ class Namer(Visitor[ScopeStack, None]):
         if not program.hasMainFunc():
             raise DecafNoMainFuncError
         
-        redefinedVar = program.getRedefinedVar()
-        if not redefinedVar is None:
-            raise DecafRedefinedVariableError(redefinedVar)
-        
-        redefinedFunc = program.getRedefinedFunc()
-        if not redefinedFunc is None:
-            raise DecafRedefinedFunctionError(redefinedFunc)
+        redefinedSymbol = program.getRedefinedSymbol()
+        if not redefinedSymbol is None:
+            raise DecafRedefinedSymbolError(redefinedSymbol)
 
-        for decl in program.declarations().values():
+        for decl in program.var_declarations().values():
+            decl.accept(self, ctx)
+        
+        for decl in program.array_declarations().values():
             decl.accept(self, ctx)
 
         for func in program.functions().values():
@@ -165,7 +168,7 @@ class Namer(Visitor[ScopeStack, None]):
         if ctx.top().loop_count == 0:
             raise DecafContinueOutsideLoopError
 
-    def visitDeclaration(self, decl: Declaration, ctx: ScopeStack) -> None:
+    def visitVarDeclaration(self, decl: VarDeclaration, ctx: ScopeStack) -> None:
         """
         1. Use ctx.lookup to find if a variable with the same name has been declared.
         2. If not, build a new VarSymbol, and put it into the current scope using ctx.declare.
@@ -181,15 +184,33 @@ class Namer(Visitor[ScopeStack, None]):
         decl.setattr('symbol', varSymbol)
         if not decl.init_expr is NULL:
             decl.init_expr.accept(self, ctx)
+        
+    def visitArrayDeclaration(self, decl: ArrayDeclaration, ctx: ScopeStack) -> None:
+        arrSymbol = ctx.top().lookup(decl.ident.value)
+        if arrSymbol is None:
+            arrSymbol = ArrSymbol(decl.ident.value, 
+                                  ArrayType.multidim(decl.var_t.type, *decl.sizes),
+                                  ctx.isGlobalScope())
+            ctx.top().declare(arrSymbol)
+        else:
+            raise DecafDeclConflictError(decl.ident.value)
+        decl.setattr('symbol', arrSymbol)
+        # TODO: No initial value for array
+    
+    def visitArrayAccess(self, expr: ArrayAccess, ctx: T) -> None:
+        expr.base.accept(self, ctx)
+        expr.index.accept(self, ctx)
+        base_symbol = expr.base.getattr('symbol')
+        expr.setattr('symbol', ArrSymbol("indexed_" + base_symbol.name, base_symbol.type.indexed))
 
     def visitAssignment(self, expr: Assignment, ctx: ScopeStack) -> None:
         """
         1. Refer to the implementation of visitBinary.
         """
-        if isinstance(expr.lhs, Identifier):
+        if isinstance(expr.lhs, Identifier) or isinstance(expr.lhs, ArrayAccess):
             expr.lhs.accept(self, ctx)
             expr.rhs.accept(self, ctx)
-            if not isinstance(expr.lhs.getattr('symbol'), VarSymbol):
+            if not isinstance(expr.lhs.getattr('symbol'), VarSymbol) and not isinstance(expr.lhs.getattr('symbol'), ArrSymbol):
                 raise DecafBadAssignTypeError
         else:
             raise DecafBadAssignTypeError

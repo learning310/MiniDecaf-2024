@@ -246,3 +246,11 @@ class Riscv:
 
         def __str__(self) -> str:
             return "lw " + Riscv.FMT_OFFSET.format(str(self.dsts[0]), self.offset, str(self.srcs[0]))
+
+    class Alloc(BackendInstr):
+        def __init__(self, dst: Temp, size: int) -> None:
+            super().__init__(InstrKind.SEQ, [dst], [], None)
+            self.size = size
+
+        def __str__(self) -> str:
+            return ""
