@@ -6,6 +6,7 @@ from utils.riscv import Riscv, RvBinaryOp, RvUnaryOp
 from utils.tac.reg import Reg
 from utils.tac.tacfunc import TACFunc
 from utils.tac.globalvar import GlobalVar
+from utils.tac.globalarr import GlobalArr
 from utils.tac.tacinstr import *
 from utils.tac.tacvisitor import TACVisitor
 from utils.asmcodeprinter import AsmCodePrinter
@@ -23,6 +24,7 @@ class RiscvAsmEmitter():
         allocatableRegs: list[Reg],
         callerSaveRegs: list[Reg],
         vars: list[GlobalVar],
+        arrs: list[GlobalArr],
     ):
         self.allocatableRegs = allocatableRegs
         self.callerSaveRegs = callerSaveRegs
@@ -31,8 +33,10 @@ class RiscvAsmEmitter():
         # the start of the asm code
         # int step10, you need to add the declaration of global var here
 
-        initialized_vars = [var for var in vars if var.initialized]
-        uninitialized_vars = [var for var in vars if not var.initialized]
+        self.emitMemset()
+
+        initialized_vars = [var for var in vars if var.initialized] + [arr for arr in arrs if arr.initialized]
+        uninitialized_vars = [var for var in vars if not var.initialized] + [arr for arr in arrs if not arr.initialized]
 
         self.printer.println(".data")
         for var in initialized_vars:
@@ -64,6 +68,31 @@ class RiscvAsmEmitter():
         info = SubroutineInfo(func.entry)
 
         return (selector.seq, info)
+
+    def emitMemset(self):
+        self.printer.printLabel(Riscv.MEMSET)
+        # Parameters: A0: addr, A1: value, A2: size
+        # T0 as the index register
+        self.printer.printInstr(Riscv.Move(Riscv.T0, Riscv.A0))
+        # Step length is 1
+        self.printer.printInstr(Riscv.LoadImm(Riscv.T1, 1))
+        # memset_loop:
+        self.printer.printLabel(Label(LabelKind.TEMP, "memset_loop"))
+        # if (size == 0) goto memset_end
+        self.printer.printInstr(Riscv.Branch(Riscv.A2, Label(LabelKind.TEMP, "memset_end")))
+        # size -= 4
+        self.printer.printInstr(Riscv.Binary(RvBinaryOp.SUB, Riscv.A2, Riscv.A2, Riscv.T1))
+        # *addr = value
+        self.printer.printInstr(Riscv.StoreWord(Riscv.A1, Riscv.T0, 0))
+        # addr += 4
+        self.printer.printInstr(Riscv.Binary(RvBinaryOp.ADD, Riscv.T0, Riscv.T0, Riscv.T1))
+        # goto memset_loop
+        self.printer.printInstr(Riscv.Jump(Label(LabelKind.TEMP, "memset_loop")))
+        # memset_end:
+        self.printer.printLabel(Label(LabelKind.TEMP, "memset_end"))
+        # return
+        self.printer.printInstr(Riscv.NativeReturn())
+        self.printer.println("")
 
     # return all the string stored in asmcodeprinter
     def emitEnd(self):
@@ -105,6 +134,9 @@ class RiscvAsmEmitter():
 
         def visitAlloc(self, instr: Alloc) -> None:
             self.seq.append(Riscv.Alloc(instr.dst, instr.size))
+
+        def visitMemset(self, instr: Memset) -> None:
+            self.seq.append(Riscv.Call(Riscv.MEMSET, Riscv.ZERO, [instr.addr, Riscv.ZERO, instr.size]))
 
         def visitMark(self, instr: Mark) -> None:
             self.seq.append(Riscv.RiscvLabel(instr.label))
@@ -218,6 +250,7 @@ class RiscvSubroutineEmitter():
     # in step9, you need to think about the fuction parameters here
     def emitLoadFromStack(self, dst: Reg, src: Temp):
         if src.index not in self.offsets:
+            print(f'src: {src}, src.index: {src.index}, self.offsets: {self.offsets}')
             raise IllegalArgumentException()
         else:
             self.buf.append(

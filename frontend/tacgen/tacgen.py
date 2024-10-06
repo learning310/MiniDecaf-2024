@@ -14,6 +14,7 @@ from utils.tac.temp import Temp
 from utils.tac.tacinstr import *
 from utils.tac.tacfunc import TACFunc
 from utils.tac.globalvar import GlobalVar
+from utils.tac.globalarr import GlobalArr
 from utils.tac.tacprog import TACProg
 from utils.tac.tacvisitor import TACVisitor
 
@@ -122,14 +123,23 @@ class TACFuncEmitter(TACVisitor):
         self.func.add(Load(dst, addr))
         return dst
     
-    def visitAddrAssign(self, addr: Temp, src: Temp) -> Temp:
-        self.func.add(AddrAssign(addr, src))
+    def visitAddrAssign(self, addr: Temp, src: Temp, offset: int = 0) -> Temp:
+        self.func.add(AddrAssign(addr, src, offset))
         return src
 
     def visitAlloc(self, size: int) -> Temp:
         temp = self.freshTemp()
         self.func.add(Alloc(temp, size))
         return temp
+    
+    def visitInitArray(self, addr: Temp, size: int, init_exprs: list[int]) -> None:
+        temps = [self.visitLoad(init_expr) for init_expr in init_exprs]
+        # Integer division is '//' in Python! Not '/'!!!
+        # Otherwise, you will encounter something like 'li t1, 1.0' in TAC.
+        len = self.visitLoad(size // 4)
+        self.func.add(Memset(addr, len))
+        for i, temp in enumerate(temps):
+            self.visitAddrAssign(addr, temp, 4 * i)
 
     def visitLabel(self, label: Label) -> None:
         self.func.add(Mark(label))
@@ -184,15 +194,18 @@ class TACGen(Visitor[TACFuncEmitter, None]):
         for var in program.var_declarations().values():
             init_value = None
             if var.init_expr != NULL:
-                if isinstance(var.init_expr, IntLiteral):
-                    init_value = var.init_expr.value
+                init_value = var.init_expr.value
             globalVars.append(GlobalVar(var.getattr('symbol').name, init_value, var.getattr('symbol').type.size))
         
         # Global arrays
+        globalArrs = []
         for arr in program.arr_declarations().values():
-            globalVars.append(GlobalVar(arr.getattr('symbol').name, None, arr.getattr('symbol').type.size))
+            init_values = None
+            if arr.init_exprs != NULL:
+                init_values = arr.init_exprs
+            globalArrs.append(GlobalArr(arr.getattr('symbol').name, init_values, arr.getattr('symbol').type.size))
         
-        return TACProg(tacFuncs, globalVars)
+        return TACProg(tacFuncs, globalVars, globalArrs)
 
     def visitBlock(self, block: Block, mv: TACFuncEmitter) -> None:
         for child in block:
@@ -245,14 +258,13 @@ class TACGen(Visitor[TACFuncEmitter, None]):
             param.accept(self, mv)
 
     def visitCall(self, call: Call, mv: TACFuncEmitter) -> None:
-        varSymbol = call.getattr('symbol')
-        varSymbol.temp = mv.freshTemp()
-        call.setattr('val', varSymbol.temp)
         for arg in call.argument_list:
             arg.accept(self, mv)
-        call.setattr('val', mv.visitCall(
+        varSymbol = call.getattr('symbol')
+        varSymbol.temp = mv.visitCall(
             FuncLabel(call.ident.value), [arg.getattr('val') for arg in call.argument_list]
-        ))
+        )
+        call.setattr('val', varSymbol.temp)
 
     def visitVarDeclaration(self, decl: VarDeclaration, mv: TACFuncEmitter) -> None:
         """
@@ -270,6 +282,8 @@ class TACGen(Visitor[TACFuncEmitter, None]):
     def visitArrDeclaration(self, decl: ArrDeclaration, mv: TACFuncEmitter) -> None:
         arrSymbol = decl.getattr('symbol')
         arrSymbol.addr = mv.visitAlloc(arrSymbol.type.size)
+        if len(decl.init_exprs) > 0:
+            mv.visitInitArray(arrSymbol.addr, arrSymbol.type.size, decl.init_exprs)
 
     def visitArrayAccess(self, expr: ArrayAccess, mv: TACFuncEmitter) -> None:
 

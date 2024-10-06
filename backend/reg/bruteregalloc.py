@@ -102,6 +102,7 @@ class BruteRegAlloc(RegAlloc):
                         subEmitter.nextParamOffset += 4         
 
                 # Save callersave regs to the stack
+                subEmitter.emitComment(f"  store {[f'{reg} {reg.temp}' for reg in Riscv.CallerSaved if reg.occupied]}")
                 for reg in Riscv.CallerSaved:
                     if reg.occupied:
                         subEmitter.emitStoreToStack(reg)
@@ -121,18 +122,24 @@ class BruteRegAlloc(RegAlloc):
                 if dst.index in self.bindings:
                     dst = self.bindings[dst.index]
                 
+                subEmitter.emitComment(f"  A0 is occupied: {Riscv.A0.occupied}")
+                
+                A0_not_occupied = False
                 if isinstance(dst, Reg):
                     subEmitter.emitAsm(Riscv.Move(dst, Riscv.A0))
                 elif Riscv.A0.occupied:
                     dst = self.allocRegFor(dst, False, loc.liveIn, subEmitter)
                     subEmitter.emitAsm(Riscv.Move(dst, Riscv.A0))
+                else:
+                    A0_not_occupied = True
 
                 # Restore callersave regs from the stack
+                subEmitter.emitComment(f"  restore {[f'{reg} {reg.temp}' for reg in Riscv.CallerSaved if reg.occupied]}")
                 for reg in Riscv.CallerSaved:
                     if reg.occupied:
                         subEmitter.emitLoadFromStack(reg, reg.temp)
 
-                if not Riscv.A0.occupied:
+                if A0_not_occupied:
                     self.bind(loc.instr.dsts[0], Riscv.A0)
             else:
                 self.allocForLoc(loc, subEmitter)

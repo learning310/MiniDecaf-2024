@@ -83,6 +83,8 @@ class Riscv:
 
     EPILOGUE_SUFFIX = "_exit"
 
+    MEMSET = FuncLabel("__memset")
+
     FMT1 = "{}"
     FMT2 = "{}, {}"
     FMT3 = "{}, {}, {}"

@@ -276,3 +276,17 @@ class Alloc(TACInstr):
     
     def accept(self, v: TACVisitor) -> None:
         v.visitAlloc(self)
+
+
+# Memset operation.
+class Memset(TACInstr):
+    def __init__(self, addr: Temp, size: Temp) -> None:
+        super().__init__(InstrKind.SEQ, [], [addr, size], None)
+        self.addr = addr
+        self.size = size
+
+    def __str__(self) -> str:
+        return f"memset {self.addr} {self.size}"
+
+    def accept(self, v: TACVisitor) -> None:
+        v.visitMemset(self)
