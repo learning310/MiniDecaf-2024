@@ -1,6 +1,8 @@
 import math
 from typing import Protocol, TypeVar, cast
 
+from ..ast.tree import ArrParameter
+
 from ..ast.node import T
 from ..ast.tree import ArrayAccess
 from frontend.ast.node import Node, NullType
@@ -49,30 +51,38 @@ class Namer(Visitor[ScopeStack, None]):
         for decl in program.var_declarations().values():
             decl.accept(self, ctx)
         
-        for decl in program.array_declarations().values():
+        for decl in program.arr_declarations().values():
             decl.accept(self, ctx)
 
         for func in program.functions().values():
             func.accept(self, ctx)
 
-    def visitParameter(self, param: Parameter, ctx: ScopeStack) -> None:
-        varSymbol = VarSymbol(param.ident.value, param.var_t.type)
+    def visitVarParameter(self, param: VarParameter, ctx: ScopeStack) -> None:
+        varSymbol = VarSymbol(param.ident.value, param.var_t)
         if ctx.top().lookup(param.ident.value) is None:
             ctx.top().declare(varSymbol)
         else:
             raise DecafDeclConflictError(param.ident.value)
         param.setattr('symbol', varSymbol)
+    
+    def visitArrParameter(self, param: ArrParameter, ctx: ScopeStack) -> None:
+        arrSymbol = ArrSymbol(param.ident.value, param.var_t)
+        if ctx.top().lookup(param.ident.value) is None:
+            ctx.top().declare(arrSymbol)
+        else:
+            raise DecafDeclConflictError(param.ident.value)
+        param.setattr('symbol', arrSymbol)
         
     def visitParameterList(self, params: ParameterList, ctx: ScopeStack) -> None:
         for param in params:
             param.accept(self, ctx)
 
     def visitFunction(self, func: Function, ctx: ScopeStack) -> None:
-        funcSymbol = FuncSymbol(func.ident.value, func.ret_t.type, GlobalScope)
+        funcSymbol = FuncSymbol(func.ident.value, func.ret_t, GlobalScope)
         print(f'# COMMENT: [def {funcSymbol}]')
         # TODO: Define 和 Declare 的区别是什么？
         for param in func.params:
-            funcSymbol.addParaType(param.var_t.type)
+            funcSymbol.addParaType(param.var_t)
         if GlobalScope.containsKey(funcSymbol):
             raise DecafDeclConflictError(func.ident.value)
         GlobalScope.define(funcSymbol)
@@ -177,7 +187,7 @@ class Namer(Visitor[ScopeStack, None]):
         """
         varSymbol = ctx.top().lookup(decl.ident.value)
         if varSymbol is None:
-            varSymbol = VarSymbol(decl.ident.value, decl.var_t.type, ctx.isGlobalScope())
+            varSymbol = VarSymbol(decl.ident.value, decl.var_t, ctx.isGlobalScope())
             ctx.top().declare(varSymbol)
         else:
             raise DecafDeclConflictError(decl.ident.value)
@@ -185,12 +195,10 @@ class Namer(Visitor[ScopeStack, None]):
         if not decl.init_expr is NULL:
             decl.init_expr.accept(self, ctx)
         
-    def visitArrayDeclaration(self, decl: ArrayDeclaration, ctx: ScopeStack) -> None:
+    def visitArrDeclaration(self, decl: ArrDeclaration, ctx: ScopeStack) -> None:
         arrSymbol = ctx.top().lookup(decl.ident.value)
         if arrSymbol is None:
-            arrSymbol = ArrSymbol(decl.ident.value, 
-                                  ArrayType.multidim(decl.var_t.type, *decl.sizes),
-                                  ctx.isGlobalScope())
+            arrSymbol = ArrSymbol(decl.ident.value, decl.var_t, ctx.isGlobalScope())
             ctx.top().declare(arrSymbol)
         else:
             raise DecafDeclConflictError(decl.ident.value)

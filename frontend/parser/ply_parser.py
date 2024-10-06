@@ -87,8 +87,12 @@ def p_parameter_list_empty(p):
 def p_parameter(p):
     """
     parameter : type Identifier
+        | type Identifier parameter_brackets
     """
-    p[0] = Parameter(p[1], p[2])
+    if len(p) == 3:
+        p[0] = VarParameter(p[1], p[2])
+    else:
+        p[0] = ArrParameter(p[1], p[2], p[3])
 
 
 def p_expression_list(p):
@@ -247,7 +251,7 @@ def p_array_declaration(p):
     """
     declaration : type Identifier declaration_brackets
     """
-    p[0] = ArrayDeclaration(p[1], p[2], p[3])
+    p[0] = ArrDeclaration(p[1], p[2], p[3])
 
 
 def p_array_declaration_brakets(p):
@@ -260,6 +264,54 @@ def p_array_declaration_brakets(p):
     else:
         p[1].append(p[3].value)
         p[0] = p[1]
+
+
+def p_array_declaration_init(p):
+    """
+    declaration : type Identifier declaration_brackets Assign LBrace integer_list RBrace
+    """
+    p[0] = ArrDeclaration(p[1], p[2], p[3], p[6])
+
+
+def p_integer_list_empty(p):
+    """
+    integer_list : empty
+    """
+    p[0] = []
+
+
+def p_integer_list(p):
+    """
+    integer_list : integer_list Comma Integer
+        | Integer
+    """
+    if len(p) == 2:
+        p[0] = [p[1].value]
+    else:
+        p[1].append(p[3].value)
+        p[0] = p[1]
+
+
+def p_parameter_brackets_empty(p):
+    """
+    parameter_brackets : LBracket RBracket
+    """
+    p[0] = [None]
+
+
+def p_parameter_brackets_uni(p):
+    """
+    parameter_brackets : LBracket Integer RBracket
+    """
+    p[0] = [p[2].value]
+
+
+def p_parameter_brackets(p):
+    """
+    parameter_brackets : parameter_brackets LBracket Integer RBracket
+    """
+    p[1].append(p[3].value)
+    p[0] = p[1]
 
 
 def p_array_access(p):

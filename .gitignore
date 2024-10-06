@@ -14,5 +14,5 @@ parsetab.py
 # test
 test*
 
-# example.c
-example.c
+# example codes
+example.*

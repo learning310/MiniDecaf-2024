@@ -44,9 +44,22 @@ class DecafBadIntValueError(Exception):
         super().__init__("Semantic error: bad integer value " + str(val))
 
 
+class DecafEmptyArraySizeError(Exception):
+    def __init__(self, name: str) -> None:
+        super().__init__("Semantic error: array '%s' with an empty size" % name)
+
+
 class DecafNonPositiveArraySizeError(Exception):
     def __init__(self, name: str, size: int) -> None:
         super().__init__("Semantic error: array '%s' with non-positive size '%d'" % (name, size))
+
+
+class DecafArrayInitSizeError(Exception):
+    def __init__(self, name: str, expected: int, got: int) -> None:
+        super().__init__(
+            "Semantic error: array '%s' with size '%d' but initialized with '%d' values"
+            % (name, expected, got)
+        )
 
 
 class DecafUndefinedVarError(Exception):
@@ -89,11 +102,6 @@ class DecafGlobalVarBadInitValueError(Exception):
             "Semantic error: the initial value of global variable '%s' must be an integer constant"
             % name
         )
-
-
-class DecafBadArraySizeError(Exception):
-    def __init__(self) -> None:
-        super().__init__("Semantic error: the array size must be positive integer")
 
 
 class DecafBadIndexError(Exception):

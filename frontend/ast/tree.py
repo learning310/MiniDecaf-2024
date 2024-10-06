@@ -6,9 +6,10 @@ Modify this file if you want to add a new AST node.
 
 from __future__ import annotations
 
+import math
 from typing import Any, Generic, Optional, TypeVar, Union
 
-from frontend.type import INT, DecafType
+from frontend.type import INT, DecafType, ArrayType
 from utils import T, U
 from utils.error import *
 
@@ -57,8 +58,8 @@ class Program(ListNode[Union["Function", "VarDeclaration"]]):
     def var_declarations(self) -> dict[str, VarDeclaration]:
         return {decl.ident.value: decl for decl in self if isinstance(decl, VarDeclaration)}
     
-    def array_declarations(self) -> dict[str, ArrayDeclaration]:
-        return {decl.ident.value: decl for decl in self if isinstance(decl, ArrayDeclaration)}
+    def arr_declarations(self) -> dict[str, ArrDeclaration]:
+        return {decl.ident.value: decl for decl in self if isinstance(decl, ArrDeclaration)}
 
     def functions(self) -> dict[str, Function]:
         return {func.ident.value: func for func in self if isinstance(func, Function)}
@@ -66,7 +67,7 @@ class Program(ListNode[Union["Function", "VarDeclaration"]]):
     def getRedefinedSymbol(self) -> bool:
         names = set()
         for decl in self:
-            if isinstance(decl, VarDeclaration) or isinstance(decl, ArrayDeclaration) or isinstance(decl, Function):
+            if isinstance(decl, VarDeclaration) or isinstance(decl, ArrDeclaration) or isinstance(decl, Function):
                 if decl.ident.value in names:
                     return decl.ident.value
                 names.add(decl.ident.value)
@@ -95,7 +96,7 @@ class Function(Node):
         body: Block,
     ) -> None:
         super().__init__("function")
-        self.ret_t = ret_t
+        self.ret_t = ret_t.type
         self.ident = ident
         self.params = params
         self.body = body
@@ -281,7 +282,7 @@ class VarDeclaration(Node):
         init_expr: Optional[Expression] = None,
     ) -> None:
         super().__init__("var_declaration")
-        self.var_t = var_t
+        self.var_t = var_t.type
         self.ident = ident
         self.init_expr = init_expr or NULL
 
@@ -488,26 +489,26 @@ class TInt(TypeLiteral):
         return v.visitTInt(self, ctx)
 
 
-class ParameterList(ListNode["Parameter"]):
+class ParameterList(ListNode["VarParameter"]):
     """
     AST node of parameter list.
     """
 
-    def __init__(self, *children: Parameter) -> None:
+    def __init__(self, *children: VarParameter) -> None:
         super().__init__("parameter_list", list(children))
 
     def accept(self, v: Visitor[T, U], ctx: T):
         return v.visitParameterList(self, ctx)
 
 
-class Parameter(Node):
+class VarParameter(Node):
     """
-    AST node of parameter.
+    AST node of variable parameter.
     """
 
     def __init__(self, var_t: TypeLiteral, ident: Identifier) -> None:
-        super().__init__("parameter")
-        self.var_t = var_t
+        super().__init__("var_parameter")
+        self.var_t = var_t.type
         self.ident = ident
 
     def __getitem__(self, key: int) -> Node:
@@ -517,7 +518,7 @@ class Parameter(Node):
         return 2
 
     def accept(self, v: Visitor[T, U], ctx: T):
-        return v.visitParameter(self, ctx)
+        return v.visitVarParameter(self, ctx)
 
 
 class ExpressionList(ListNode["Expression"]):
@@ -555,28 +556,31 @@ class Call(Expression):
         return f"call({self.ident})"
 
 
-class ArrayDeclaration(Node):
+class ArrDeclaration(Node):
     """
     AST node of array declaration.
     """
 
-    def __init__(self, var_t: TypeLiteral, ident: Identifier, sizes: list[int]) -> None:
-        super().__init__("array_declaration")
-        self.var_t = var_t
+    def __init__(self, var_t: TypeLiteral, ident: Identifier, sizes: list[int], init_exprs: list[int] = []) -> None:
+        super().__init__("arr_declaration")
         self.ident = ident
         self.sizes = sizes
+        self.init_exprs = init_exprs
         for size in self.sizes:
             if size <= 0:
                 raise DecafNonPositiveArraySizeError(ident.value, size)
+        if len(self.init_exprs) > math.prod(self.sizes):
+            raise DecafArrayInitSizeError(ident.value, len(self.init_exprs), math.prod(self.sizes))
+        self.var_t = ArrayType.multidim(var_t.type, *self.sizes)
 
     def __getitem__(self, key: int) -> Node:
-        return (self.var_t, self.ident, self.sizes)[key]
+        return (self.var_t, self.ident, self.sizes, self.init_exprs)[key]
     
     def __len__(self) -> int:
-        return 3
+        return 4
 
     def accept(self, v: Visitor[T, U], ctx: T):
-        return v.visitArrayDeclaration(self, ctx)
+        return v.visitArrDeclaration(self, ctx)
 
 
 class ArrayAccess(Node):
@@ -597,3 +601,34 @@ class ArrayAccess(Node):
     
     def accept(self, v: Visitor[T, U], ctx: T):
         return v.visitArrayAccess(self, ctx)
+
+
+class ArrParameter(Node):
+    """
+    AST node of array parameter.
+    """
+
+    def __init__(self, var_t: TypeLiteral, ident: Identifier, sizes: list[int | None]) -> None:
+        super().__init__("arr_parameter")
+        self.ident = ident
+        self.sizes = sizes
+        for i, size in enumerate(self.sizes):
+            if i == 0:
+                if size is None:
+                    self.sizes[i] = 0
+                    continue
+            else:
+                if size is None:
+                    raise DecafEmptyArraySizeError(ident.value)
+            if size <= 0:
+                raise DecafNonPositiveArraySizeError(ident.value, size)
+        self.var_t = ArrayType.multidim(var_t.type, *self.sizes)
+
+    def __getitem__(self, key: int) -> Node:
+        return (self.var_t, self.ident, self.sizes)[key]
+    
+    def __len__(self) -> int:
+        return 3
+
+    def accept(self, v: Visitor[T, U], ctx: T):
+        return v.visitArrParameter(self, ctx)

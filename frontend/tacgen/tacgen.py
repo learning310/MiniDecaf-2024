@@ -1,3 +1,4 @@
+from ..ast.tree import ArrParameter
 from frontend.ast.node import Optional
 from frontend.ast.tree import Function, Optional, ExpressionList
 from frontend.ast import node
@@ -188,7 +189,7 @@ class TACGen(Visitor[TACFuncEmitter, None]):
             globalVars.append(GlobalVar(var.getattr('symbol').name, init_value, var.getattr('symbol').type.size))
         
         # Global arrays
-        for arr in program.array_declarations().values():
+        for arr in program.arr_declarations().values():
             globalVars.append(GlobalVar(arr.getattr('symbol').name, None, arr.getattr('symbol').type.size))
         
         return TACProg(tacFuncs, globalVars)
@@ -211,8 +212,6 @@ class TACGen(Visitor[TACFuncEmitter, None]):
         """
         1. Set the 'val' attribute of ident as the temp variable of the 'symbol' attribute of ident.
         """
-        if mv.is_rvalue and isinstance(ident.getattr('symbol').type, ArrayType):
-            raise DecafBadOperationTypeError
         if ident.getattr('symbol').isGlobal:
             if isinstance(ident.getattr('symbol'), VarSymbol):
                 global_var_addr = mv.visitGlobalSymbol(ident.getattr('symbol'))
@@ -223,7 +222,7 @@ class TACGen(Visitor[TACFuncEmitter, None]):
                 global_arr_addr = mv.visitGlobalSymbol(ident.getattr('symbol'))
                 ident.getattr('symbol').addr = global_arr_addr
                 if mv.is_rvalue:
-                    ident.setattr('val', mv.visitAddr(global_arr_addr))
+                    ident.setattr('val', global_arr_addr)
         else:
             if mv.is_rvalue:
                 if isinstance(ident.getattr('symbol'), VarSymbol):
@@ -231,10 +230,15 @@ class TACGen(Visitor[TACFuncEmitter, None]):
                 if isinstance(ident.getattr('symbol'), ArrSymbol):
                     ident.setattr('val', ident.getattr('symbol').addr)
 
-    def visitParameter(self, param: Parameter, mv: TACFuncEmitter) -> None:
+    def visitVarParameter(self, param: VarParameter, mv: TACFuncEmitter) -> None:
         varSymbol = param.getattr('symbol')
         varSymbol.temp = mv.freshTemp()
         param.setattr('val', varSymbol.temp)
+    
+    def visitArrParameter(self, param: ArrParameter, mv: TACFuncEmitter) -> None:
+        arrSymbol = param.getattr('symbol')
+        arrSymbol.addr = mv.freshTemp()
+        param.setattr('val', arrSymbol.addr)
 
     def visitParameterList(self, params: ParameterList, mv: TACFuncEmitter) -> None:
         for param in params:
@@ -263,9 +267,9 @@ class TACGen(Visitor[TACFuncEmitter, None]):
             tempVarInitExpr = decl.init_expr.getattr('val')
             mv.visitAssignment(varSymbol.temp, tempVarInitExpr)
 
-    def visitArrayDeclaration(self, decl: ArrayDeclaration, mv: TACFuncEmitter) -> None:
-        arraySymbol = decl.getattr('symbol')
-        arraySymbol.addr = mv.visitAlloc(arraySymbol.type.size)
+    def visitArrDeclaration(self, decl: ArrDeclaration, mv: TACFuncEmitter) -> None:
+        arrSymbol = decl.getattr('symbol')
+        arrSymbol.addr = mv.visitAlloc(arrSymbol.type.size)
 
     def visitArrayAccess(self, expr: ArrayAccess, mv: TACFuncEmitter) -> None:
 
