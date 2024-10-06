@@ -79,11 +79,12 @@ class Unary(TACInstr):
         self.operand = operand
 
     def __str__(self) -> str:
-        return "%s = %s %s" % (
-            self.dst,
-            ("-" if (self.op == TacUnaryOp.NEG) else "!"),
-            self.operand,
-        )
+        opStr = {
+            TacUnaryOp.NEG: "-",
+            TacUnaryOp.NOT: "~",
+            TacUnaryOp.LNOT: '!',
+        }[self.op]
+        return "%s = %s %s" % (self.dst, opStr, self.operand)
 
     def accept(self, v: TACVisitor) -> None:
         v.visitUnary(self)
