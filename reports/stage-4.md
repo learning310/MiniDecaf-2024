@@ -75,7 +75,7 @@ if (a)
 >
 > 会返回 0 而不是 2。如果要求条件表达式不短路，在你的实现中该做何种修改？简述你的思路。
 
-如果在 `frontend/tacgen/tacgen.py` 里，将 `expr.otherwise.accept(self, mv)` 放到 `expr.then.accept(self, mv)` 之后，`mv.visitLabel(exitLabel)` 之前，这样就能实现条件表达式不短路执行。
+如果在 `frontend/tacgen/tacgen.py` 里，将 `expr.otherwise.accept(self, mv)` 放到 `expr.then.accept(self, mv)` 之后，`mv.visitBranch(exitLabel)` 之前，这样就能实现条件表达式不短路执行。
 
 这是因为，在条件为真的情况下，“执行 otherwise 部分的语句”位于“跳到 if 语句结束”之前。此时，条件表达式不短路执行。
 
