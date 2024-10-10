@@ -48,14 +48,8 @@ class Namer(Visitor[ScopeStack, None]):
         if not redefinedSymbol is None:
             raise DecafRedefinedSymbolError(redefinedSymbol)
 
-        for decl in program.var_declarations().values():
-            decl.accept(self, ctx)
-        
-        for decl in program.arr_declarations().values():
-            decl.accept(self, ctx)
-
-        for func in program.functions().values():
-            func.accept(self, ctx)
+        for child in program.children:
+            child.accept(self, ctx)
 
     def visitVarParameter(self, param: VarParameter, ctx: ScopeStack) -> None:
         varSymbol = VarSymbol(param.ident.value, param.var_t)
